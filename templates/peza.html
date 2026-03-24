@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="gl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Peza · FoldER</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    body{background:#0f172a;color:#e5e7eb;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;margin:0}
+    header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(17,24,39,.6);backdrop-filter: blur(6px);position:sticky;top:0;z-index:10}
+    .brand{display:flex;align-items:center;gap:12px}.brand img{height:36px;border-radius:6px}
+    .wrap{max-width:860px;margin:0 auto;padding:16px}
+    .card{background:#111827;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px}
+    h1{margin:0 0 4px}
+    .muted{color:#9ca3af}
+    pre{white-space:pre-wrap;line-height:1.5}
+    .tag{display:inline-block;border:1px solid rgba(255,255,255,.15);padding:2px 8px;border-radius:999px;font-size:12px;color:#cbd5e1;margin-right:6px}
+    a{color:#22d3ee}
+  </style>
+</head>
+<body>
+
+  <!-- NAV persistente -->
+  <header>
+    <div class="brand" id="brand-home" style="cursor:pointer">
+      <img src="../assets/logo.png" alt="FoldER" />
+      <div>
+        <div style="font-weight:800">FoldER</div>
+        <div style="font-size:12px;color:#9ca3af">Mapa do folclore galego</div>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Vistas">
+      <button class="tab" disabled style="opacity:.6">Pezas</button>
+    </nav>
+  </header>
+
+  <div class="wrap">
+    <div class="card">
+      <h1 id="title">Peza</h1>
+      <div class="muted" id="meta"></div>
+      <div style="margin:10px 0" id="tags"></div>
+      <hr style="border-color:rgba(255,255,255,.08);margin:12px 0">
+      <pre id="texto">(cargando…)</pre>
+    </div>
+  </div>
+
+  <!-- Volver onde estabas -->
+  <script>
+    (function(){
+      const el = document.getElementById('brand-home');
+      if (!el) return;
+      el.addEventListener('click', () => {
+        try {
+          const ref = document.referrer || '';
+          const sameOrigin = ref && new URL(ref).origin === location.origin;
+          if (sameOrigin) { history.back(); return; }
+        } catch {}
+        location.href = '../index.html';
+      });
+    })();
+  </script>
+
+  <script type="module" src="../js/peza.js"></script>
+</body>
+</html>
