@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="gl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Coplas Galegas</title>
+  <meta name="description" content="Arquivo relacional de coplas, pezas, territorios e media de tradición oral galega.">
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body class="home">
+  <div id="site-nav"></div>
+
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="eyebrow">Arquivo relacional</p>
+      <h1>Coplas Galegas</h1>
+      <p class="hero-lead">
+        Un espazo para organizar, explorar e relacionar coplas, pezas, territorios e media
+        vinculada do folclore galego.
+      </p>
+    </div>
+  </header>
+
+  <main class="home-main">
+    <section class="home-grid">
+      <a class="card card-link" href="./pages/mapa.html">
+        <span class="card-kicker">Exploración visual</span>
+        <h2>Mapa</h2>
+        <p>Explorar territorios sobre mapa e navegar desde provincias, comarcas, concellos e parroquias.</p>
+      </a>
+
+      <a class="card card-link" href="./pages/territorios.html">
+        <span class="card-kicker">Estrutura territorial</span>
+        <h2>Territorios</h2>
+        <p>Explorar a xerarquía territorial e abrir a ficha de cada unidade.</p>
+      </a>
+
+      <a class="card card-link" href="./pages/coplas.html">
+        <span class="card-kicker">Corpus textual</span>
+        <h2>Coplas</h2>
+        <p>Consultar coplas, etiquetas e vínculos territoriais, e acceder á ficha individual.</p>
+      </a>
+
+      <a class="card card-link is-muted" href="./pages/pezas.html">
+        <span class="card-kicker">Montaxes</span>
+        <h2>Pezas</h2>
+        <p>Sección en construción.</p>
+      </a>
+
+      <a class="card card-link is-muted" href="#">
+        <span class="card-kicker">Recursos</span>
+        <h2>Media</h2>
+        <p>Sección en construción.</p>
+      </a>
+    </section>
+  </main>
+
+  <script type="module">
+    import { mountTopNav } from "./js/nav.js";
+    mountTopNav("home");
+  </script>
+</body>
+</html>

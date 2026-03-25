@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="gl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mapa</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body>
+  <div id="site-nav"></div>
+
+  <header class="site-header">
+    <div id="breadcrumbs"></div>
+    <h1>Mapa</h1>
+    <label>
+      Capa:
+      <select id="layer-type">
+        <option value="prov">Provincias</option>
+        <option value="com">Comarcas</option>
+        <option value="con" selected>Concellos</option>
+        <option value="par">Parroquias</option>
+      </select>
+    </label>
+  </header>
+
+  <main class="page-wrap">
+    <section class="card">
+      <div id="map" style="height: 70vh; min-height: 500px;"></div>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/topojson-client@3"></script>
+  <script type="module">
+    import { mountTopNav, mountBreadcrumb } from "../js/nav.js";
+    mountTopNav("mapa");
+    mountBreadcrumb([
+      { href: "../index.html", label: "Inicio" },
+      { label: "Mapa" }
+    ]);
+  </script>
+  <script type="module" src="../js/mapa.js"></script>
+</body>
+</html>

@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="gl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>fol e ar · Mapa do Folclore Galego</title>
+
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/map.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    :root{
+      --bg:#0f172a;
+      --card:#111827;
+      --ink:#e5e7eb;
+      --muted:#9ca3af;
+      --accent:#22d3ee;
+      --accent2:#a78bfa;
+      --border:rgba(255,255,255,.08);
+    }
+
+    *{box-sizing:border-box}
+    html,body{
+      height:100%;
+      margin:0;
+      font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    }
+
+    body{
+      background:linear-gradient(180deg,#0b1220,#0f172a);
+      color:var(--ink);
+    }
+
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:12px 16px;
+      border-bottom:1px solid var(--border);
+      background:rgba(17,24,39,.6);
+      backdrop-filter:blur(6px);
+      position:sticky;
+      top:0;
+      z-index:10;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      cursor:pointer;
+      min-width:0;
+    }
+
+    .brand img{
+      height:36px;
+      border-radius:6px;
+      flex:0 0 auto;
+    }
+
+    .brand-text{
+      min-width:0;
+    }
+
+    .brand-title{
+      font-weight:800;
+      line-height:1.1;
+    }
+
+    .brand-subtitle{
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.1;
+    }
+
+    nav.tabs{
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+    }
+
+    .tab{
+      border:1px solid var(--border);
+      background:#0b1220;
+      color:var(--ink);
+      padding:8px 12px;
+      border-radius:10px;
+      cursor:pointer;
+    }
+
+    .tab[aria-selected="true"]{
+      outline:2px solid var(--accent);
+    }
+
+    .wrap{
+      max-width:1100px;
+      margin:0 auto;
+      padding:12px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:300px 1fr;
+      gap:12px;
+    }
+
+    @media (max-width:900px){
+      .grid{grid-template-columns:1fr}
+    }
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      box-shadow:0 10px 30px rgba(0,0,0,.25);
+    }
+
+    .card .inner{
+      padding:12px;
+    }
+
+    .filters .row{
+      display:grid;
+      gap:8px;
+      margin-bottom:10px;
+    }
+
+    label{
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    select,input,button{
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background:#0b1220;
+      color:var(--ink);
+    }
+
+    input[type="search"]{
+      width:100%;
+    }
+
+    button{
+      cursor:pointer;
+    }
+
+    button.primary{
+      background:linear-gradient(180deg,#22d3ee,#06b6d4);
+      border:none;
+      color:#05202a;
+      font-weight:700;
+    }
+
+    .section-title{
+      font-weight:800;
+      margin:0 0 8px;
+    }
+
+    .results{
+      max-height:440px;
+      overflow:auto;
+    }
+
+    .list{
+      list-style:none;
+      margin:0;
+      padding:0;
+    }
+
+    .list li{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 6px;
+      border-bottom:1px dashed var(--border);
+      cursor:pointer;
+    }
+
+    .tag{
+      font-size:12px;
+      border:1px solid var(--border);
+      padding:2px 6px;
+      border-radius:999px;
+      color:#cbd5e1;
+    }
+
+    .hint{
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .muted{
+      color:var(--muted);
+    }
+
+    .footer{
+      margin-top:14px;
+      color:var(--muted);
+      font-size:12px;
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    a{
+      color:var(--accent);
+    }
+
+    #map{
+      height:420px;
+      border-radius:12px;
+      overflow:hidden;
+      border:1px solid var(--border);
+    }
+
+    .actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .scope-box{
+      display:none;
+      margin-top:6px;
+    }
+
+    .scope-pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      border:1px solid var(--border);
+      padding:6px 10px;
+      border-radius:999px;
+      background:#0b1220;
+      font-size:12px;
+      color:#cbd5e1;
+      max-width:100%;
+      flex-wrap:wrap;
+    }
+
+    .scope-pill strong{
+      color:var(--ink);
+      font-weight:600;
+    }
+
+    .scope-pill button{
+      padding:2px 8px;
+      border-radius:999px;
+      font-size:12px;
+      background:transparent;
+      color:var(--muted);
+    }
+
+    .view-filters[hidden]{
+      display:none !important;
+    }
+
+    .cesta{
+      margin-top:12px;
+    }
+
+    .placeholder{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      height:100%;
+      color:var(--muted);
+      font-size:14px;
+    }
+  </style>
+</head>
+<body>
+  <noscript>Esta aplicación precisa JavaScript para funcionar.</noscript>
+
+  <header>
+    <div class="brand" id="brand-home" title="Volver ou ir ao inicio">
+      <img src="assets/logo.png" alt="fol e ar" />
+      <div class="brand-text">
+        <div class="brand-title">fol e ar</div>
+        <div class="brand-subtitle">Mapa do folclore galego</div>
+      </div>
+    </div>
+
+    <nav class="tabs" role="tablist" aria-label="Vistas">
+      <button class="tab" role="tab" aria-selected="true"  data-view="mapa">Mapa</button>
+      <button class="tab" role="tab" aria-selected="false" data-view="pezas">Pezas</button>
+      <button class="tab" role="tab" aria-selected="false" data-view="coplas">Coplas</button>
+    </nav>
+  </header>
+
+  <div class="wrap">
+    <div class="grid">
+      <aside class="card">
+        <div class="inner filters">
+          <h3 class="section-title">Buscar</h3>
+
+          <div class="row">
+            <label for="lugar">Buscar lugar (provincia, comarca, concello ou parroquia)</label>
+            <input
+              id="lugar"
+              type="search"
+              autocomplete="off"
+              placeholder="Ex.: A Coruña, Bergantiños, Malpica, San Xoán de Malpica"
+            />
+            <ul id="lugar-suxest" class="list" style="margin-top:6px;max-height:200px;overflow:auto"></ul>
+
+            <div id="scope-row" class="scope-box">
+              <div class="scope-pill">
+                <strong>Ámbito:</strong>
+                <span id="scope-label"></span>
+                <button id="scope-clear" type="button" title="Quitar ámbito">✕</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- FILTROS MAPA -->
+          <div class="view-filters" data-view="mapa">
+            <h3 class="section-title">Mapa</h3>
+
+            <div class="row">
+              <label for="map-layer">Capa do mapa</label>
+              <select id="map-layer">
+                <option value="par" selected>Parroquias</option>
+                <option value="con">Concellos</option>
+                <option value="com">Comarcas</option>
+                <option value="prov">Provincias</option>
+              </select>
+            </div>
+
+            <div class="row">
+              <label for="count-type">Que contar</label>
+              <select id="count-type">
+                <option value="pezas" selected>Pezas</option>
+                <option value="coplas">Coplas</option>
+                <option value="ambas">Pezas + Coplas</option>
+              </select>
+            </div>
+
+            <div class="hint">
+              Explora o mapa por nivel. Podes seleccionar un ámbito e pasar logo a pezas ou coplas.
+            </div>
+          </div>
+
+          <!-- FILTROS PEZAS -->
+          <div class="view-filters" data-view="pezas" hidden>
+            <h3 class="section-title">Filtros de pezas</h3>
+
+            <div class="row">
+              <label for="ritmo">Ritmo</label>
+              <select id="ritmo">
+                <option value="">Todos</option>
+                <option>Muiñeira</option>
+                <option>Xota</option>
+                <option>Maneo</option>
+                <option>Pasodobre</option>
+                <option>Valse</option>
+                <option>Mazurca</option>
+                <option>Polca</option>
+                <option>Rumba</option>
+              </select>
+            </div>
+
+            <div class="row">
+              <label for="pezas-sort">Orde</label>
+              <select id="pezas-sort">
+                <option value="titulo_asc">Título (A→Z)</option>
+                <option value="titulo_desc">Título (Z→A)</option>
+                <option value="ritmo_asc">Ritmo (A→Z)</option>
+              </select>
+            </div>
+
+            <div class="hint">
+              Se hai un ámbito activo, verás as pezas desa zona, incluíndo subunidades se o teu buscador o soporta.
+            </div>
+          </div>
+
+          <!-- FILTROS COPLAS -->
+          <div class="view-filters" data-view="coplas" hidden>
+            <h3 class="section-title">Filtros de coplas</h3>
+
+            <div class="row">
+              <label for="q">Texto</label>
+              <input id="q" type="search" placeholder="Ex.: barquiños de velas..." />
+            </div>
+
+            <div class="row">
+              <label for="etiqueta">Etiqueta</label>
+              <select id="etiqueta">
+                <option value="">Todas</option>
+                <option value="copla">Copla</option>
+                <option value="volta">Volta</option>
+              </select>
+            </div>
+
+            <div class="row">
+              <label for="coplas-sort">Orde</label>
+              <select id="coplas-sort">
+                <option value="alf_asc">Alfabético (A→Z)</option>
+                <option value="alf_desc">Alfabético (Z→A)</option>
+              </select>
+            </div>
+
+            <div class="hint">
+              O ámbito activo restrinxe as coplas á zona seleccionada.
+            </div>
+          </div>
+
+          <div class="actions" style="margin-top:8px">
+            <button class="primary" id="apply" type="button">Aplicar</button>
+            <button id="clear" type="button">Limpar filtros</button>
+          </div>
+
+          <div style="margin-top:8px;font-size:12px;color:var(--muted)">
+            + <a href="#" id="suxest">Enviar suxestión</a> ·
+            <a href="#" id="engadir">Engadir copla</a>
+          </div>
+        </div>
+      </aside>
+
+      <main>
+        <section class="card view" id="view-mapa">
+          <div class="inner">
+            <h3 class="section-title">Mapa</h3>
+            <div id="map"><div class="placeholder">[ Cargando Leaflet... ]</div></div>
+            <div class="footer">
+              <div>Tiles: OSM / CARTO / Stamen</div>
+              <div class="muted">Explora o territorio e abre pezas ou coplas por ámbito</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card view" id="view-pezas" hidden>
+          <div class="inner">
+            <h3 class="section-title">Pezas</h3>
+            <div class="results">
+              <ul class="list" id="pezas-list"></ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="card view" id="view-coplas" hidden>
+          <div class="inner">
+            <h3 class="section-title">Coplas</h3>
+            <div class="results">
+              <ul class="list" id="coplas-list"></ul>
+            </div>
+
+            <div class="card cesta">
+              <div class="inner">
+                <strong>Cesta de coplas (<span id="cesta-count">0</span>)</strong>
+                <div class="actions" style="margin-top:6px">
+                  <button id="cesta-save" type="button">Gardar</button>
+                  <button id="cesta-clear" type="button">Limpar</button>
+                  <button class="primary" id="cesta-pdf" type="button">Xerar PDF</button>
+                </div>
+                <div class="hint">Arrastra para ordenar (TODO).</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/topojson-client@3"></script>
+
+  <script type="module">
+    import * as mapa     from './js/mapa.js';
+    import * as buscador from './js/buscador.js';
+    import './js/datos.js';
+    import './js/popup.js';
+    import './js/utils.js';
+
+    // -----------------------------
+    // Estado UI
+    // -----------------------------
+    const tabs = document.querySelectorAll('.tab');
+    const views = {
+      mapa: document.getElementById('view-mapa'),
+      pezas: document.getElementById('view-pezas'),
+      coplas: document.getElementById('view-coplas'),
+    };
+
+    let currentView = 'mapa';
+    let currentScope = '';
+
+    // -----------------------------
+    // Elementos
+    // -----------------------------
+    const scopeRow       = document.getElementById('scope-row');
+    const scopeLabel     = document.getElementById('scope-label');
+    const scopeClearBtn  = document.getElementById('scope-clear');
+
+    const lugarEl        = document.getElementById('lugar');
+    const ritmoEl        = document.getElementById('ritmo');
+    const qEl            = document.getElementById('q');
+    const etiquetaEl     = document.getElementById('etiqueta');
+    const pezasSortEl    = document.getElementById('pezas-sort');
+    const coplasSortEl   = document.getElementById('coplas-sort');
+    const mapLayerEl     = document.getElementById('map-layer');
+    const countTypeEl    = document.getElementById('count-type');
+
+    // -----------------------------
+    // Helpers
+    // -----------------------------
+    function getCurrentFilters(){
+      return {
+        view: currentView,
+        scope: currentScope || '',
+        ritmo: ritmoEl?.value || '',
+        q: qEl?.value || '',
+        etiqueta: etiquetaEl?.value || '',
+        pezasSort: pezasSortEl?.value || 'titulo_asc',
+        coplasSort: coplasSortEl?.value || 'alf_asc',
+        mapLayer: mapLayerEl?.value || 'par',
+        countType: countTypeEl?.value || 'pezas',
+      };
+    }
+
+    function emitFiltersChange(extra = {}){
+      const payload = { ...getCurrentFilters(), ...extra };
+      document.dispatchEvent(new CustomEvent('filters:change', { detail: payload }));
+
+      if (typeof mapa.onFiltersChange === 'function') {
+        mapa.onFiltersChange(payload);
+      }
+    }
+
+    function updateScopeUI(){
+      if (currentScope) {
+        scopeRow.style.display = 'block';
+      } else {
+        scopeRow.style.display = 'none';
+        scopeLabel.textContent = '';
+      }
+    }
+
+    function setScope(scope = '', labelText = ''){
+      currentScope = scope || '';
+      scopeLabel.textContent = labelText || currentScope || '';
+      updateScopeUI();
+      emitFiltersChange();
+    }
+
+    function show(view){
+      currentView = view;
+
+      Object.values(views).forEach(v => v.hidden = true);
+      views[view].hidden = false;
+
+      tabs.forEach(t => {
+        t.setAttribute('aria-selected', String(t.dataset.view === view));
+      });
+
+      document.querySelectorAll('.view-filters').forEach(block => {
+        block.hidden = block.getAttribute('data-view') !== view;
+      });
+
+      document.dispatchEvent(new CustomEvent('ui:view-changed', {
+        detail: { view: currentView, scope: currentScope }
+      }));
+    }
+
+    async function tryResolveScopeFromInput(){
+      const text = lugarEl?.value?.trim();
+      if (!text) return null;
+      if (typeof buscador.findScopeByText !== 'function') return null;
+
+      try {
+        const found = await buscador.findScopeByText(text);
+        if (found?.scope) {
+          return found;
+        }
+      } catch (err) {
+        console.warn('Non se puido resolver o ámbito:', err);
+      }
+      return null;
+    }
+
+    // -----------------------------
+    // Tabs
+    // -----------------------------
+    tabs.forEach(t => {
+      t.addEventListener('click', () => show(t.dataset.view));
+    });
+
+    // -----------------------------
+    // Logo: volver atrás ou ir ao index
+    // -----------------------------
+    document.getElementById('brand-home')?.addEventListener('click', () => {
+      try {
+        const ref = document.referrer || '';
+        const sameOrigin = ref && new URL(ref).origin === location.origin;
+        if (sameOrigin) {
+          history.back();
+          return;
+        }
+      } catch {}
+
+      location.href = (location.pathname.endsWith('/templates/peza.html'))
+        ? '../index.html'
+        : 'index.html';
+    });
+
+    // -----------------------------
+    // Chip de ámbito
+    // -----------------------------
+    scopeClearBtn?.addEventListener('click', () => {
+      setScope('', '');
+    });
+
+    // -----------------------------
+    // Ligazóns a GitHub Issues
+    // -----------------------------
+    document.getElementById('suxest').href =
+      'https://github.com/fol-e-ar/map/issues/new?title=[Suxesti%C3%B3n]&body=Descrici%C3%B3n%3A%0AConcello%2FParroquia%3A%0AEnlace%20(se%20hai)%3A';
+
+    document.getElementById('engadir').href =
+      'https://github.com/fol-e-ar/map/issues/new?title=[Copla]%20T%C3%ADtulo&body=Localizaci%C3%B3n%20(c%C3%B3digo)%3A%0A%0ATexto%3A%0A%0AFonte%3A';
+
+    // -----------------------------
+    // Inicialización de módulos
+    // -----------------------------
+    if (typeof mapa.initMapa === 'function') {
+      mapa.initMapa({ mapContainerId: 'map' });
+    }
+
+    if (typeof buscador.initBuscador === 'function') {
+      buscador.initBuscador({
+        pezasListId: 'pezas-list',
+        coplasListId: 'coplas-list',
+        cestaCountId: 'cesta-count',
+        lugarInputId: 'lugar',
+        lugarSuggestId: 'lugar-suxest'
+      });
+    }
+
+    // -----------------------------
+    // Aplicar filtros
+    // -----------------------------
+    document.getElementById('apply')?.addEventListener('click', async () => {
+      // Se non hai ámbito, tentamos resolvelo a partir do campo de lugar
+      if (!currentScope) {
+        const found = await tryResolveScopeFromInput();
+        if (found?.scope) {
+          setScope(found.scope, found.label || found.scope);
+        }
+      }
+
+      // Se o módulo de buscador ten unha API específica, deixámoslle enriquecer o payload
+      let payload = getCurrentFilters();
+
+      if (typeof buscador.applyFiltersFromUI === 'function') {
+        try {
+          const enriched = buscador.applyFiltersFromUI(payload);
+          if (enriched && typeof enriched === 'object') {
+            payload = { ...payload, ...enriched };
+          }
+        } catch (err) {
+          console.warn('Erro en applyFiltersFromUI:', err);
+        }
+      }
+
+      emitFiltersChange(payload);
+    });
+
+    // -----------------------------
+    // Limpar filtros (mantén ámbito)
+    // -----------------------------
+    document.getElementById('clear')?.addEventListener('click', () => {
+      if (ritmoEl) ritmoEl.value = '';
+      if (qEl) qEl.value = '';
+      if (etiquetaEl) etiquetaEl.value = '';
+      if (pezasSortEl) pezasSortEl.value = 'titulo_asc';
+      if (coplasSortEl) coplasSortEl.value = 'alf_asc';
+      if (countTypeEl) countTypeEl.value = 'pezas';
+      if (lugarEl) lugarEl.value = '';
+
+      let payload = getCurrentFilters();
+
+      if (typeof buscador.applyFiltersFromUI === 'function') {
+        try {
+          const enriched = buscador.applyFiltersFromUI({
+            ...payload,
+            ritmo: '',
+            q: '',
+            etiqueta: '',
+            pezasSort: 'titulo_asc',
+            coplasSort: 'alf_asc',
+            countType: 'pezas',
+            clearScope: false
+          });
+          if (enriched && typeof enriched === 'object') {
+            payload = { ...payload, ...enriched };
+          }
+        } catch (err) {
+          console.warn('Erro ao limpar filtros:', err);
+        }
+      }
+
+      emitFiltersChange({
+        ...payload,
+        ritmo: '',
+        q: '',
+        etiqueta: '',
+        pezasSort: 'titulo_asc',
+        coplasSort: 'alf_asc',
+        countType: 'pezas',
+      });
+    });
+
+    // -----------------------------
+    // Cambio de filtros do mapa en quente
+    // -----------------------------
+    mapLayerEl?.addEventListener('change', () => emitFiltersChange());
+    countTypeEl?.addEventListener('change', () => emitFiltersChange());
+
+    // -----------------------------
+    // Eventos dende o mapa
+    // -----------------------------
+    document.addEventListener('map:open-parroquia', (e) => {
+      const { parroquiaId, label } = e.detail || {};
+      if (!parroquiaId) return;
+
+      setScope(`par:${parroquiaId}`, label || `Parroquia ${parroquiaId}`);
+      show('pezas');
+    });
+
+    document.addEventListener('map:set-scope', (e) => {
+      const { scope, label } = e.detail || {};
+      if (!scope) return;
+      setScope(scope, label || scope);
+    });
+
+    // -----------------------------
+    // Eventos dende o buscador/autocompletado
+    // -----------------------------
+    document.addEventListener('ui:set-scope', (e) => {
+      const { scope, label, view } = e.detail || {};
+      if (!scope) return;
+
+      setScope(scope, label || scope);
+      if (view) show(view);
+    });
+
+    document.addEventListener('ui:switch-view', (e) => {
+      const view = e.detail?.view;
+      if (!view || !views[view]) return;
+      show(view);
+    });
+
+    // -----------------------------
+    // Estado inicial
+    // -----------------------------
+    show('mapa');
+    updateScopeUI();
+    emitFiltersChange();
+  </script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="gl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Coplas</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div id="site-nav"></div>
+
+  <header class="site-header">
+    <div id="breadcrumbs"></div>
+    <h1>Coplas</h1>
+    <p class="muted">Explora o corpus, busca por texto, etiqueta ou territorio, e accede á ficha individual de cada copla.</p>
+  </header>
+
+  <main class="page-wrap">
+    <section class="card">
+      <div class="toolbar">
+        <div class="toolbar-search">
+          <label for="search" class="toolbar-label">Buscar</label>
+          <input id="search" type="search" placeholder="Ex.: despedida, Mondariz, amor, barquiños...">
+        </div>
+
+        <div class="toolbar-filters">
+          <label for="has-territory" class="toolbar-label">Territorio</label>
+          <select id="has-territory">
+            <option value="">Todas</option>
+            <option value="with">Con territorio</option>
+            <option value="without">Sen territorio</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-head">
+        <h2 class="section-title">Resultados</h2>
+        <p id="results-count" class="muted"></p>
+      </div>
+
+      <ul id="copla-list" class="list"></ul>
+    </section>
+  </main>
+
+  <script type="module">
+    import { mountTopNav, mountBreadcrumb } from "../js/nav.js";
+    mountTopNav("coplas");
+    mountBreadcrumb([
+      { href: "../index.html", label: "Inicio" },
+      { label: "Coplas" }
+    ]);
+  </script>
+  <script type="module" src="../js/coplas.js"></script>
+</body>
+</html>

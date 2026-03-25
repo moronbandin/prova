@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="gl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Territorio</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body>
+  <div id="site-nav"></div>
+
+  <header class="site-header">
+    <div id="breadcrumbs"></div>
+    <h1 id="title">Territorio</h1>
+    <p id="subtitle" class="muted"></p>
+  </header>
+
+  <main class="page-wrap">
+    <section class="card">
+      <h2 class="section-title">Información</h2>
+      <div id="meta" class="meta-stack"></div>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">Mapa</h2>
+      <div id="territory-map" class="territory-map"></div>
+      <p class="muted" id="map-note"></p>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">Xerarquía</h2>
+      <ul id="hierarchy" class="list compact-list"></ul>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">Subterritorios</h2>
+      <ul id="children" class="list compact-list"></ul>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <h2 class="section-title">Coplas relacionadas</h2>
+        <p id="copla-count" class="muted"></p>
+      </div>
+      <ul id="copla-list" class="list"></ul>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/topojson-client@3"></script>
+  <script type="module" src="../js/territorio.js"></script>
+</body>
+</html>

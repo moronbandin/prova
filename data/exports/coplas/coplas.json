@@ -1,0 +1,46 @@
+[
+  {
+    "id": 3,
+    "text": "Non chas quero, non chas quero\nnabizas do teu nabal-e\nnon chas quero, non chas quero\nque me poden facer mal-e.",
+    "normalized_text": "non chas quero, non chas quero nabizas do teu nabal-e non chas quero, non chas quero que me poden facer mal-e.",
+    "incipit": "Non chas quero, non chas quero",
+    "notes": null,
+    "created_at": "2026-03-25 21:48:48",
+    "territories": [
+      {
+        "id": "par:1501711",
+        "nome": "O Temple (Santa María)",
+        "tipo": "par",
+        "relation_type": "direct",
+        "is_direct": 1
+      }
+    ],
+    "tags": [
+      "amor",
+      "enfermidade",
+      "horta"
+    ]
+  },
+  {
+    "id": 2,
+    "text": "O páxaro cando neva\nmete o rabo na silveira\nasí fan as boas mozas\ncando non hai quen as queira.",
+    "normalized_text": "o paxaro cando neva mete o rabo na silveira asi fan as boas mozas cando non hai quen as queira.",
+    "incipit": "O páxaro cando neva mete o",
+    "notes": null,
+    "created_at": "2026-03-25 20:37:25",
+    "territories": [
+      {
+        "id": "con:15052",
+        "nome": "Muxía",
+        "tipo": "con",
+        "relation_type": "direct",
+        "is_direct": 1
+      }
+    ],
+    "tags": [
+      "amor",
+      "diñeiro",
+      "paxaros"
+    ]
+  }
+]

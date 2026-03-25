@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="gl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Territorios</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div id="site-nav"></div>
+
+  <header class="site-header">
+    <div id="breadcrumbs"></div>
+    <h1>Territorios</h1>
+    <p class="muted">Explora a estrutura territorial por niveis ou busca directamente calquera territorio.</p>
+  </header>
+
+  <main class="page-wrap">
+    <section class="card">
+      <div class="toolbar">
+        <div class="toolbar-search">
+          <label for="search" class="toolbar-label">Buscar</label>
+          <input id="search" type="search" placeholder="Ex.: Mondariz, 32003, con:32003, Gargamala...">
+        </div>
+
+        <div class="toolbar-filters">
+          <label for="tipo" class="toolbar-label">Tipo</label>
+          <select id="tipo">
+            <option value="">Todos</option>
+            <option value="prov">Provincias</option>
+            <option value="com">Comarcas</option>
+            <option value="con">Concellos</option>
+            <option value="par">Parroquias</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-head">
+        <h2 class="section-title">Resultados</h2>
+        <p id="results-count" class="muted"></p>
+      </div>
+
+      <div id="territory-groups" class="territory-groups"></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { mountTopNav, mountBreadcrumb } from "../js/nav.js";
+    mountTopNav("territorios");
+    mountBreadcrumb([
+      { href: "../index.html", label: "Inicio" },
+      { label: "Territorios" }
+    ]);
+  </script>
+  <script type="module" src="../js/territorios.js"></script>
+</body>
+</html>
