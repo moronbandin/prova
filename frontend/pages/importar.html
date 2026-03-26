@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="gl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Importar coplas</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div id="site-nav"></div>
+
+  <header class="site-header">
+    <div id="breadcrumbs"></div>
+    <h1>Importar coplas</h1>
+    <p class="muted">Pega aquí un JSON de coplas, revísao e valídao antes de importalo coa ferramenta local.</p>
+  </header>
+
+  <main class="page-wrap">
+    <section class="card">
+      <h2 class="section-title">JSON de entrada</h2>
+<textarea id="json-input" class="import-textarea" spellcheck="false" placeholder='{
+"coplas": [
+{
+"text": "Unha vella non moi vella\nfoi lavar ao río un día\nperdeu o pano na auga\ne choraba que morría",
+"notes": "",
+"tags": ["humor"],
+"territories": [{"id": "con:32003"}]
+}
+]
+}'></textarea>
+
+      <div class="toolbar-actions">
+        <button id="validate-btn" type="button">Validar</button>
+        <button id="format-btn" type="button">Formatar JSON</button>
+        <button id="clear-btn" type="button">Limpar</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <h2 class="section-title">Resultado da validación</h2>
+        <p id="validation-summary" class="muted"></p>
+      </div>
+      <div id="validation-output" class="notes-box"></div>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">Vista previa</h2>
+      <div id="preview-output" class="preview-grid"></div>
+    </section>
+
+    <section class="card">
+      <h2 class="section-title">Importación real</h2>
+      <p class="muted">
+        Esta páxina non escribe directamente na base. A importación real faise desde terminal con:
+      </p>
+      <pre class="command-box"><code>python3 tools/import_coplas_json.py ruta/ao/ficheiro.json</code></pre>
+    </section>
+  </main>
+
+  <script type="module" src="../js/importar.js"></script>
+</body>
+</html>
