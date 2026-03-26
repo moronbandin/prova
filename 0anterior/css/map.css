@@ -1,8 +1,0 @@
-  .count-badge { pointer-events:none; }
-  .count-badge .bubble{
-    min-width:22px; height:22px; padding:0 6px;
-    display:inline-flex; align-items:center; justify-content:center;
-    background:#22d3ee; color:#06171b; font-weight:800; font-size:12px;
-    border-radius:999px; border:1px solid rgba(0,0,0,.35);
-    box-shadow:0 6px 14px rgba(0,0,0,.35);
-  }

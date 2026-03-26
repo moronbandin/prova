@@ -75,6 +75,61 @@ def get_or_create_tag(conn, tag_name: str) -> int:
     return cur.lastrowid
 
 
+def choose_multiple_territories(conn):
+    selected = []
+
+    territory_choice = input("Queres engadir territorio(s)? [s/N]: ").strip().lower()
+    if territory_choice != "s":
+        return selected
+
+    while True:
+        print("\nTerritorios xa seleccionados:")
+        if selected:
+            for i, item in enumerate(selected, start=1):
+                print(f"  {i}. {item['nome']} [{item['tipo']}] ({item['id']}, cod={item['cod']})")
+        else:
+            print("  ningún")
+
+        query = input("\nBusca territorio por nome, ID ou código (Enter para rematar): ").strip()
+        if not query:
+            break
+
+        matches = search_territories(conn, query)
+
+        if not matches:
+            print("Non se atoparon territorios.")
+            continue
+
+        print("\nTerritorios atopados:")
+        shown = matches[:20]
+        for i, row in enumerate(shown, start=1):
+            print(f"{i}. {row['nome']} [{row['tipo']}] ({row['id']}, cod={row['cod']})")
+
+        choice = input("\nEscolle número (ou Enter para volver buscar): ").strip()
+        if not choice:
+            continue
+
+        if not choice.isdigit():
+            print("Selección non válida.")
+            continue
+
+        idx = int(choice) - 1
+        if idx < 0 or idx >= len(shown):
+            print("Selección fóra de rango.")
+            continue
+
+        picked = shown[idx]
+
+        if any(item["id"] == picked["id"] for item in selected):
+            print("Ese territorio xa estaba engadido.")
+            continue
+
+        selected.append(picked)
+        print(f"Engadido: {picked['nome']} [{picked['tipo']}]")
+
+    return selected
+
+
 def main():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -100,32 +155,7 @@ def main():
         incipit = make_incipit(text)
         notes = input("Notas (opcional): ").strip()
 
-        territory_id = None
-
-        territory_choice = input("Queres engadir territorio? [s/N]: ").strip().lower()
-        if territory_choice == "s":
-            query = input("Busca territorio por nome, ID ou código: ").strip()
-            matches = search_territories(conn, query)
-
-            if not matches:
-                print("Non se atoparon territorios. A copla gardarase sen territorio.")
-            else:
-                print("\nTerritorios atopados:")
-                for i, row in enumerate(matches[:20], start=1):
-                    print(f"{i}. {row['nome']} [{row['tipo']}] ({row['id']}, cod={row['cod']})")
-
-                choice = input("\nEscolle número (ou Enter para ningún): ").strip()
-                if choice:
-                    if not choice.isdigit():
-                        print("Selección non válida.")
-                        return
-
-                    idx = int(choice) - 1
-                    if idx < 0 or idx >= min(len(matches), 20):
-                        print("Selección fóra de rango.")
-                        return
-
-                    territory_id = matches[idx]["id"]
+        selected_territories = choose_multiple_territories(conn)
 
         raw_tags = input("Etiquetas (separadas por comas, opcional): ").strip()
         tags = []
@@ -133,10 +163,17 @@ def main():
             tags = [t.strip().lower() for t in raw_tags.split(",") if t.strip()]
 
         print("\nResumo:")
-        print(f"- Copla: {text}")
+        print(f"- Copla:\n{text}")
         print(f"- Normalizada: {normalized_text}")
         print(f"- Incipit: {incipit}")
-        print(f"- Territorio: {territory_id or 'sen territorio'}")
+
+        if selected_territories:
+            print("- Territorios:")
+            for t in selected_territories:
+                print(f"  - {t['nome']} [{t['tipo']}] ({t['id']})")
+        else:
+            print("- Territorios: sen territorio")
+
         print(f"- Etiquetas: {', '.join(tags) if tags else 'sen etiquetas'}")
         print(f"- Notas: {notes or 'sen notas'}")
 
@@ -154,13 +191,13 @@ def main():
         )
         copla_id = cur.lastrowid
 
-        if territory_id:
+        for territory in selected_territories:
             conn.execute(
                 """
                 INSERT INTO copla_territories (copla_id, territory_id, relation_type, is_direct)
                 VALUES (?, ?, 'direct', 1)
                 """,
-                (copla_id, territory_id),
+                (copla_id, territory["id"]),
             )
 
         for tag_name in tags:
