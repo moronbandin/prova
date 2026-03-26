@@ -1,19 +1,18 @@
 import { qs } from "./utils.js";
 
-function isHomePage() {
-  const path = window.location.pathname;
-  return path.endsWith("/frontend/") || path.endsWith("/frontend/index.html");
+function isInsidePages() {
+  return window.location.pathname.includes("/pages/");
 }
 
 function makeHref(target) {
-  const home = isHomePage();
+  const insidePages = isInsidePages();
 
   const map = {
-    home: home ? "./index.html" : "../index.html",
-    mapa: home ? "./pages/mapa.html" : "./mapa.html",
-    territorios: home ? "./pages/territorios.html" : "./territorios.html",
-    coplas: home ? "./pages/coplas.html" : "./coplas.html",
-    pezas: home ? "./pages/pezas.html" : "./pezas.html",
+    home: insidePages ? "../index.html" : "./index.html",
+    mapa: insidePages ? "./mapa.html" : "./pages/mapa.html",
+    territorios: insidePages ? "./territorios.html" : "./pages/territorios.html",
+    coplas: insidePages ? "./coplas.html" : "./pages/coplas.html",
+    pezas: insidePages ? "./pezas.html" : "./pages/pezas.html",
   };
 
   return map[target] || target;
