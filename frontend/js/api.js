@@ -1,6 +1,6 @@
 const PATHS = {
-  territorios: "../../data/exports/territorios/territorios.json",
-  coplas: "../../data/exports/coplas/coplas.json",
+  territorios: "../data/exports/territorios/territorios.json",
+  coplas: "../data/exports/coplas/coplas.json",
   geo: {
     prov: "../assets/web/provincias.web.geojson",
     com: "../assets/web/comarcas.web.geojson",
@@ -11,19 +11,25 @@ const PATHS = {
 
 const cache = new Map();
 
+function resolvePath(path) {
+  return new URL(path, window.location.href).toString();
+}
+
 async function fetchJson(path) {
-  if (cache.has(path)) {
-    return cache.get(path);
+  const resolved = resolvePath(path);
+
+  if (cache.has(resolved)) {
+    return cache.get(resolved);
   }
 
-  const promise = fetch(path).then(async (res) => {
+  const promise = fetch(resolved).then(async (res) => {
     if (!res.ok) {
       throw new Error(`Non se puido cargar ${path}`);
     }
     return res.json();
   });
 
-  cache.set(path, promise);
+  cache.set(resolved, promise);
   return promise;
 }
 
