@@ -780,3 +780,90 @@ textarea:focus {
     min-height: 300px;
   }
 }
+
+/* =========================================================
+   16. IMPORT EDITOR
+========================================================= */
+
+.import-editor-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.import-copla-card {
+  padding: 1rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-soft);
+}
+
+.import-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.import-copla-text,
+.import-copla-notes {
+  min-height: 140px;
+  resize: vertical;
+}
+
+.import-subblock {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.inline-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 320px) auto;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.linked-block-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.linked-item-inline {
+  text-align: left;
+  cursor: pointer;
+  background: var(--bg-soft);
+}
+
+.tag-pill-removable {
+  border: 0;
+  cursor: pointer;
+}
+
+.danger-btn {
+  padding: 0.6rem 0.9rem;
+  font: inherit;
+  color: #8b2c2c;
+  cursor: pointer;
+  background: #fff5f5;
+  border: 1px solid rgba(150, 40, 40, 0.2);
+  border-radius: 12px;
+}
+
+.danger-btn:hover {
+  box-shadow: var(--shadow-soft);
+}
+
+/* =========================================================
+   17. IMPORT EDITOR RESPONSIVE
+========================================================= */
+
+@media (max-width: 900px) {
+  .import-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .inline-form {
+    grid-template-columns: 1fr;
+  }
+}

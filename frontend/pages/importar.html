@@ -12,27 +12,35 @@
   <header class="site-header">
     <div id="breadcrumbs"></div>
     <h1>Importar coplas</h1>
-    <p class="muted">Pega aquí un JSON de coplas, revísao e valídao antes de importalo coa ferramenta local.</p>
+    <p class="muted">
+      Pega aquí un JSON de coplas, revísao, edítao visualmente e valídao antes de importalo coa ferramenta local.
+    </p>
   </header>
 
   <main class="page-wrap">
     <section class="card">
       <h2 class="section-title">JSON de entrada</h2>
-<textarea id="json-input" class="import-textarea" spellcheck="false" placeholder='{
-"coplas": [
-{
-"text": "Unha vella non moi vella\nfoi lavar ao río un día\nperdeu o pano na auga\ne choraba que morría",
-"notes": "",
-"tags": ["humor"],
-"territories": [{"id": "con:32003"}]
-}
-]
+
+      <textarea
+        id="json-input"
+        class="import-textarea"
+        spellcheck="false"
+        placeholder='{
+  "coplas": [
+    {
+      "text": "Unha vella non moi vella\nfoi lavar ao río un día\nperdeu o pano na auga\ne choraba que morría",
+      "notes": "",
+      "tags": ["humor"],
+      "territories": [{"id": "con:32003"}]
+    }
+  ]
 }'></textarea>
 
       <div class="toolbar-actions">
-        <button id="validate-btn" type="button">Validar</button>
+        <button id="validate-btn" type="button">Validar e cargar</button>
         <button id="format-btn" type="button">Formatar JSON</button>
         <button id="clear-btn" type="button">Limpar</button>
+        <button id="add-empty-copla-btn" type="button">Engadir copla baleira</button>
       </div>
     </section>
 
@@ -42,6 +50,14 @@
         <p id="validation-summary" class="muted"></p>
       </div>
       <div id="validation-output" class="notes-box"></div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <h2 class="section-title">Editor visual</h2>
+        <p id="editor-summary" class="muted"></p>
+      </div>
+      <div id="editor-output" class="import-editor-grid"></div>
     </section>
 
     <section class="card">

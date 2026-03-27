@@ -1,0 +1,65 @@
+{
+  "coplas": [
+    {
+      "text": "Teño unha casiña branca\ná beiriña do camiño\ncando pasa quen eu quero\nparéceme un palaciño",
+      "notes": "",
+      "tags": [
+        "amor"
+      ],
+      "territories": [
+        {
+          "id": "con:15030"
+        }
+      ]
+    },
+    {
+      "text": "Fun ao muíño moer\nco saco cheo de millo\nsaín co corazón ledo\ne volvín sen un granillo",
+      "notes": "",
+      "tags": [
+        "costumes"
+      ],
+      "territories": [
+        {
+          "id": "con:36057"
+        }
+      ]
+    },
+    {
+      "text": "Aí vén o maio florido\nvestido de verde e branco\nquen me dera ser maio\npara andar de ramo en ramo",
+      "notes": "",
+      "tags": [
+        "festivo"
+      ],
+      "territories": [
+        {
+          "id": "con:27028"
+        }
+      ]
+    },
+    {
+      "text": "Se vas á feira de Lugo\ntráeme un pano de cores\nque o levarei na cabeza\ncando vaia ver amores",
+      "notes": "",
+      "tags": [
+        "amor",
+        "feira"
+      ],
+      "territories": [
+        {
+          "id": "con:27028"
+        }
+      ]
+    },
+    {
+      "text": "A rula cando se queixa\nben se lle entende o cantar\nnon hai dor como a da alma\nque non se pode calar",
+      "notes": "",
+      "tags": [
+        "tristeza"
+      ],
+      "territories": [
+        {
+          "id": "con:15078"
+        }
+      ]
+    }
+  ]
+}

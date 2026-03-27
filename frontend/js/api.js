@@ -1,15 +1,27 @@
-const PATHS = {
-  territorios: "../data/exports/territorios/territorios.json",
-  coplas: "../data/exports/coplas/coplas.json",
-  geo: {
-    prov: "../assets/web/provincias.web.geojson",
-    com: "../assets/web/comarcas.web.geojson",
-    con: "../assets/web/concellos.web.geojson",
-    par: "../assets/web/parroquias.web.topo.json",
-  },
-};
-
 const cache = new Map();
+
+function isLocalFrontendMode() {
+  return window.location.pathname.includes("/frontend/");
+}
+
+function getBasePrefix() {
+  return isLocalFrontendMode() ? "../../" : "../";
+}
+
+function buildPaths() {
+  const base = getBasePrefix();
+
+  return {
+    territorios: `${base}data/exports/territorios/territorios.json`,
+    coplas: `${base}data/exports/coplas/coplas.json`,
+    geo: {
+      prov: `${base}assets/web/provincias.web.geojson`,
+      com: `${base}assets/web/comarcas.web.geojson`,
+      con: `${base}assets/web/concellos.web.geojson`,
+      par: `${base}assets/web/parroquias.web.topo.json`,
+    },
+  };
+}
 
 function resolvePath(path) {
   return new URL(path, window.location.href).toString();
@@ -34,18 +46,23 @@ async function fetchJson(path) {
 }
 
 export async function getTerritorios() {
-  return fetchJson(PATHS.territorios);
+  const paths = buildPaths();
+  return fetchJson(paths.territorios);
 }
 
 export async function getCoplas() {
-  return fetchJson(PATHS.coplas);
+  const paths = buildPaths();
+  return fetchJson(paths.coplas);
 }
 
 export async function getGeoLayer(tipo) {
-  const path = PATHS.geo[tipo];
+  const paths = buildPaths();
+  const path = paths.geo[tipo];
+
   if (!path) {
     throw new Error(`Tipo de capa non soportado: ${tipo}`);
   }
+
   return fetchJson(path);
 }
 
@@ -54,5 +71,5 @@ export function clearApiCache() {
 }
 
 export function getPathConfig() {
-  return structuredClone(PATHS);
+  return buildPaths();
 }
