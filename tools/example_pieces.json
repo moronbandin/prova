@@ -1,0 +1,23 @@
+{
+  "pieces": [
+    {
+      "title": "Muiñeira de Toutón",
+      "slug": "muineira-de-touton",
+      "author": "Alejandro",
+      "context_territory_id": "par:1500101",
+      "description": "Montaxe básica de exemplo.",
+      "notes": "",
+      "status": "draft",
+      "coplas": [
+        {
+          "copla_id": 2,
+          "position": 1
+        },
+        {
+          "copla_id": 3,
+          "position": 2
+        }
+      ]
+    }
+  ]
+}

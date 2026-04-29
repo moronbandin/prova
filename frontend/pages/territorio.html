@@ -45,6 +45,62 @@
       </div>
       <ul id="copla-list" class="list"></ul>
     </section>
+
+    <section class="card">
+      <div class="section-head">
+        <h2 class="section-title">Montador de pezas</h2>
+        <p id="draft-count" class="muted"></p>
+      </div>
+
+      <div class="piece-builder-grid">
+        <div class="piece-builder-form">
+          <label class="toolbar-label" for="piece-title">Título</label>
+          <input id="piece-title" type="text" placeholder="Muiñeira de Toutón">
+
+          <label class="toolbar-label" for="piece-author">Autoría</label>
+          <input id="piece-author" type="text" placeholder="Alejandro">
+
+          <label class="toolbar-label" for="piece-context">Territorio de contexto</label>
+          <input id="piece-context" type="text" readonly>
+
+          <label class="toolbar-label" for="piece-description">Descrición</label>
+          <textarea id="piece-description" rows="4" placeholder="Notas curtas sobre a montaxe"></textarea>
+
+          <label class="toolbar-label" for="piece-notes">Notas internas</label>
+          <textarea id="piece-notes" rows="4" placeholder="Observacións para a edición ou interpretación"></textarea>
+
+          <div class="toolbar-actions">
+            <button id="piece-download-btn" type="button">Descargar JSON</button>
+            <button id="piece-clear-btn" type="button">Limpar peza</button>
+          </div>
+
+          <p class="muted piece-builder-note">
+            O JSON descargado pódese importar con <code>python3 tools/admin.py import-pieces ficheiro.json</code>.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="section-title">Selección actual</h3>
+          <div id="draft-list" class="linked-block"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <h2 class="section-title">Pezas relacionadas</h2>
+        <p id="piece-count" class="muted"></p>
+      </div>
+      <div id="piece-list" class="linked-block"></div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <h2 class="section-title">Media relacionada</h2>
+        <p id="media-count" class="muted"></p>
+      </div>
+      <div id="media-list" class="linked-block"></div>
+    </section>
   </main>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

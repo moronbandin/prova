@@ -1,6 +1,17 @@
-import { getTerritorios, getCoplas, getGeoLayer } from "./api.js";
+import { getTerritorios, getCoplas, getGeoLayer, getPezas, getMedia } from "./api.js";
 import { getParam, nl2br, qs, territoryLabel } from "./utils.js";
 import { mountTopNav, mountBreadcrumb } from "./nav.js";
+import {
+  addCoplaToDraft,
+  buildPieceImportPayload,
+  clearDraft,
+  draftHasCopla,
+  ensureContextTerritory,
+  loadDraft,
+  moveCoplaInDraft,
+  removeCoplaFromDraft,
+  updateDraftMeta,
+} from "./piece_builder.js";
 
 const TYPE_LABELS = {
   prov: "Provincia",
@@ -75,6 +86,34 @@ function filterCoplasByTerritory(coplas, territoryIds) {
   );
 }
 
+function filterPiecesByTerritory(pieces, territoryIds, coplas) {
+  const ids = new Set(territoryIds);
+  const relatedCoplaIds = new Set(coplas.map(item => item.id));
+
+  return pieces.filter(piece => {
+    if (piece.context_territory?.id && ids.has(piece.context_territory.id)) {
+      return true;
+    }
+
+    return (piece.coplas || []).some(item => relatedCoplaIds.has(item.id));
+  });
+}
+
+function filterMediaByContext(mediaItems, territoryIds, coplas, pieces) {
+  const ids = new Set(territoryIds);
+  const coplaIds = new Set(coplas.map(item => String(item.id)));
+  const pieceIds = new Set(pieces.map(item => String(item.id)));
+
+  return mediaItems.filter(item =>
+    (item.links || []).some(link => {
+      if (link.entity_type === "territory") return ids.has(link.entity_id);
+      if (link.entity_type === "copla") return coplaIds.has(String(link.entity_id));
+      if (link.entity_type === "piece") return pieceIds.has(String(link.entity_id));
+      return false;
+    })
+  );
+}
+
 function renderTerritoryInfo(territorio, hierarchy, children) {
   qs("#title").textContent = territorio.nome;
   qs("#subtitle").textContent = TYPE_LABELS[territorio.tipo] || territorio.tipo;
@@ -127,6 +166,7 @@ function renderCoplas(coplas) {
   for (const item of coplas) {
     const territories = (item.territories || []).map(t => t.nome).join(", ") || "sen territorio";
     const tags = (item.tags || []).join(", ") || "sen etiquetas";
+    const isSelected = draftHasCopla(item.id);
 
     const li = document.createElement("li");
     li.className = "list-item";
@@ -139,8 +179,201 @@ function renderCoplas(coplas) {
         <div class="meta-row"><strong>Territorios</strong><span>${territories}</span></div>
         <div class="meta-row"><strong>Etiquetas</strong><span>${tags}</span></div>
       </div>
+      <div class="toolbar-actions">
+        <button
+          type="button"
+          class="piece-action-btn"
+          data-action="${isSelected ? "remove" : "add"}"
+          data-copla-id="${item.id}"
+        >
+          ${isSelected ? "Quitar da peza" : "Engadir á peza"}
+        </button>
+      </div>
     `;
     ul.appendChild(li);
+  }
+}
+
+function territoryNameById(all, territoryId) {
+  return all.find(item => item.id === territoryId)?.nome || territoryId || "";
+}
+
+function downloadPieceJson() {
+  const payload = buildPieceImportPayload();
+  const content = JSON.stringify(payload, null, 2);
+  const blob = new Blob([`${content}\n`], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const slug = payload.pieces[0].slug || "peza";
+  link.href = url;
+  link.download = `${slug}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function renderDraftBuilder(territorio, territorios, relatedCoplas) {
+  const draft = ensureContextTerritory(territorio.id);
+  const list = qs("#draft-list");
+  const count = qs("#draft-count");
+  const titleInput = qs("#piece-title");
+  const authorInput = qs("#piece-author");
+  const contextInput = qs("#piece-context");
+  const descriptionInput = qs("#piece-description");
+  const notesInput = qs("#piece-notes");
+
+  if (titleInput && titleInput.value !== draft.title) titleInput.value = draft.title || "";
+  if (authorInput && authorInput.value !== draft.author) authorInput.value = draft.author || "";
+  if (descriptionInput && descriptionInput.value !== draft.description) {
+    descriptionInput.value = draft.description || "";
+  }
+  if (notesInput && notesInput.value !== draft.notes) notesInput.value = draft.notes || "";
+  if (contextInput) {
+    contextInput.value = territoryNameById(territorios, draft.context_territory_id);
+  }
+
+  list.innerHTML = "";
+  count.textContent = `${draft.coplas.length} copla${draft.coplas.length === 1 ? "" : "s"} seleccionada${draft.coplas.length === 1 ? "" : "s"}`;
+
+  if (!draft.coplas.length) {
+    list.innerHTML = `<p class="muted">Aínda non hai coplas nesta peza. Engádeas desde a listaxe superior.</p>`;
+  } else {
+    for (const item of draft.coplas) {
+      const territoryNames = relatedCoplas
+        .find(copla => Number(copla.id) === Number(item.id))
+        ?.territories?.map(entry => entry.nome)
+        ?.join(", ");
+
+      const node = document.createElement("div");
+      node.className = "linked-item";
+      node.innerHTML = `
+        <span class="linked-item-title">${item.incipit || "(sen incipit)"}</span>
+        <span class="linked-item-meta">#${item.id}${territoryNames ? ` · ${territoryNames}` : ""}</span>
+        <div class="piece-builder-actions">
+          <button type="button" data-action="move-up" data-copla-id="${item.id}">Subir</button>
+          <button type="button" data-action="move-down" data-copla-id="${item.id}">Baixar</button>
+          <button type="button" data-action="remove" data-copla-id="${item.id}">Quitar</button>
+        </div>
+      `;
+      list.appendChild(node);
+    }
+  }
+
+  if (titleInput && !titleInput.dataset.bound) {
+    titleInput.dataset.bound = "true";
+    titleInput.addEventListener("input", () => updateDraftMeta({ title: titleInput.value }));
+  }
+  if (authorInput && !authorInput.dataset.bound) {
+    authorInput.dataset.bound = "true";
+    authorInput.addEventListener("input", () => updateDraftMeta({ author: authorInput.value }));
+  }
+  if (descriptionInput && !descriptionInput.dataset.bound) {
+    descriptionInput.dataset.bound = "true";
+    descriptionInput.addEventListener("input", () => updateDraftMeta({ description: descriptionInput.value }));
+  }
+  if (notesInput && !notesInput.dataset.bound) {
+    notesInput.dataset.bound = "true";
+    notesInput.addEventListener("input", () => updateDraftMeta({ notes: notesInput.value }));
+  }
+
+  const downloadButton = qs("#piece-download-btn");
+  if (downloadButton && !downloadButton.dataset.bound) {
+    downloadButton.dataset.bound = "true";
+    downloadButton.addEventListener("click", downloadPieceJson);
+  }
+
+  const clearButton = qs("#piece-clear-btn");
+  if (clearButton && !clearButton.dataset.bound) {
+    clearButton.dataset.bound = "true";
+    clearButton.addEventListener("click", () => {
+      clearDraft();
+      ensureContextTerritory(territorio.id);
+      renderCoplas(relatedCoplas);
+      renderDraftBuilder(territorio, territorios, relatedCoplas);
+    });
+  }
+
+  list.querySelectorAll("button[data-action]").forEach(button => {
+    button.addEventListener("click", () => {
+      const action = button.dataset.action;
+      const coplaId = Number(button.dataset.coplaId);
+      if (action === "remove") removeCoplaFromDraft(coplaId);
+      if (action === "move-up") moveCoplaInDraft(coplaId, "up");
+      if (action === "move-down") moveCoplaInDraft(coplaId, "down");
+      renderCoplas(relatedCoplas);
+      renderDraftBuilder(territorio, territorios, relatedCoplas);
+    });
+  });
+
+  qs("#copla-list")?.querySelectorAll(".piece-action-btn").forEach(button => {
+    button.addEventListener("click", () => {
+      const coplaId = Number(button.dataset.coplaId);
+      const copla = relatedCoplas.find(item => Number(item.id) === coplaId);
+      if (!copla) return;
+
+      if (button.dataset.action === "remove") {
+        removeCoplaFromDraft(coplaId);
+      } else {
+        addCoplaToDraft(copla);
+      }
+
+      renderCoplas(relatedCoplas);
+      renderDraftBuilder(territorio, territorios, relatedCoplas);
+    });
+  });
+}
+
+function renderPieces(pieces) {
+  const container = qs("#piece-list");
+  const counter = qs("#piece-count");
+  container.innerHTML = "";
+  counter.textContent = `${pieces.length} peza${pieces.length === 1 ? "" : "s"}`;
+
+  if (!pieces.length) {
+    container.innerHTML = `<p class="muted">Non hai pezas relacionadas con este territorio.</p>`;
+    return;
+  }
+
+  for (const item of pieces) {
+    const node = document.createElement("a");
+    node.className = "linked-item";
+    node.href = `./peza.html?id=${encodeURIComponent(item.id)}`;
+    node.innerHTML = `
+      <span class="linked-item-title">${item.title}</span>
+      <span class="linked-item-meta">
+        ${item.author || "sen autoría"} · ${item.copla_count} copla${item.copla_count === 1 ? "" : "s"}
+        ${item.context_territory?.nome ? ` · ${item.context_territory.nome}` : ""}
+      </span>
+    `;
+    container.appendChild(node);
+  }
+}
+
+function renderMedia(mediaItems) {
+  const container = qs("#media-list");
+  const counter = qs("#media-count");
+  container.innerHTML = "";
+  counter.textContent = `${mediaItems.length} recurso${mediaItems.length === 1 ? "" : "s"}`;
+
+  if (!mediaItems.length) {
+    container.innerHTML = `<p class="muted">Non hai media relacionada con este territorio.</p>`;
+    return;
+  }
+
+  for (const item of mediaItems) {
+    const links = (item.links || [])
+      .map(link => `${link.entity_type}:${link.entity_id}`)
+      .join(" · ");
+
+    const node = document.createElement("a");
+    node.className = "linked-item";
+    node.href = item.url;
+    node.target = "_blank";
+    node.rel = "noreferrer";
+    node.innerHTML = `
+      <span class="linked-item-title">${item.title}</span>
+      <span class="linked-item-meta">${item.provider} · ${item.media_kind}${links ? ` · ${links}` : ""}</span>
+    `;
+    container.appendChild(node);
   }
 }
 
@@ -275,9 +508,11 @@ async function init() {
       return;
     }
 
-    const [territorios, coplas] = await Promise.all([
+    const [territorios, coplas, pieces, mediaItems] = await Promise.all([
       getTerritorios(),
       getCoplas(),
+      getPezas(),
+      getMedia(),
     ]);
 
     const territorio = territorios.find(t => t.id === id);
@@ -305,9 +540,14 @@ async function init() {
     const children = getChildren(territorio, territorios);
     const descendantIds = getDescendantIds(territorio, territorios);
     const relatedCoplas = filterCoplasByTerritory(coplas, descendantIds);
+    const relatedPieces = filterPiecesByTerritory(pieces, descendantIds, relatedCoplas);
+    const relatedMedia = filterMediaByContext(mediaItems, descendantIds, relatedCoplas, relatedPieces);
 
     renderTerritoryInfo(territorio, hierarchy, children);
     renderCoplas(relatedCoplas);
+    renderDraftBuilder(territorio, territorios, relatedCoplas);
+    renderPieces(relatedPieces);
+    renderMedia(relatedMedia);
     await renderTerritoryMap(territorio);
   } catch (err) {
     mountTopNav("territorios");

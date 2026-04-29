@@ -24,7 +24,9 @@ CREATE TABLE IF NOT EXISTS coplas (
   normalized_text TEXT NOT NULL,
   incipit TEXT,
   notes TEXT,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  status TEXT NOT NULL DEFAULT 'published',
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_coplas_normalized_text ON coplas(normalized_text);
@@ -49,9 +51,14 @@ CREATE TABLE IF NOT EXISTS pieces (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   title TEXT NOT NULL,
   slug TEXT NOT NULL UNIQUE,
+  author TEXT NOT NULL,
+  context_territory_id TEXT,
   description TEXT,
-  group_name TEXT,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  notes TEXT,
+  status TEXT NOT NULL DEFAULT 'draft',
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (context_territory_id) REFERENCES territories(id)
 );
 
 CREATE TABLE IF NOT EXISTS copla_territories (
@@ -68,6 +75,8 @@ CREATE TABLE IF NOT EXISTS piece_coplas (
   piece_id INTEGER NOT NULL,
   copla_id INTEGER NOT NULL,
   position INTEGER NOT NULL,
+  section_label TEXT,
+  notes TEXT,
   PRIMARY KEY (piece_id, position),
   FOREIGN KEY (piece_id) REFERENCES pieces(id) ON DELETE CASCADE,
   FOREIGN KEY (copla_id) REFERENCES coplas(id) ON DELETE CASCADE
@@ -75,16 +84,23 @@ CREATE TABLE IF NOT EXISTS piece_coplas (
 
 CREATE TABLE IF NOT EXISTS media (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  type TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  media_kind TEXT NOT NULL,
   title TEXT NOT NULL,
   url TEXT NOT NULL,
-  description TEXT
+  description TEXT,
+  author_or_source TEXT,
+  thumbnail_url TEXT,
+  status TEXT NOT NULL DEFAULT 'published',
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS media_links (
   media_id INTEGER NOT NULL,
   entity_type TEXT NOT NULL,
   entity_id TEXT NOT NULL,
+  relation_type TEXT NOT NULL DEFAULT 'direct',
   PRIMARY KEY (media_id, entity_type, entity_id),
   FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE
 );

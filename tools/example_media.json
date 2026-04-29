@@ -1,0 +1,20 @@
+{
+  "media": [
+    {
+      "provider": "youtube",
+      "media_kind": "video",
+      "title": "Melodía 1: Xota",
+      "url": "https://www.youtube.com/watch?v=example",
+      "description": "Exemplo de ligazón externa.",
+      "author_or_source": "Arquivo persoal",
+      "thumbnail_url": "",
+      "status": "published",
+      "links": [
+        {
+          "entity_type": "territory",
+          "entity_id": "par:1500101"
+        }
+      ]
+    }
+  ]
+}

@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
-import sqlite3
 from pathlib import Path
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-db_path = ROOT / "data" / "db" / "coplas.sqlite"
-schema_path = ROOT / "backend" / "schema" / "001_init.sql"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-db_path.parent.mkdir(parents=True, exist_ok=True)
+from tools.admin import main
 
-conn = sqlite3.connect(db_path)
-try:
-    sql = schema_path.read_text(encoding="utf-8")
-    conn.executescript(sql)
-    conn.commit()
-    print(f"Base creada: {db_path}")
-finally:
-    conn.close()
+
+if __name__ == "__main__":
+    raise SystemExit(main(["init-db"]))

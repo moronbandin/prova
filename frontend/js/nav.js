@@ -13,6 +13,7 @@ function makeHref(target) {
     territorios: insidePages ? "./territorios.html" : "./pages/territorios.html",
     coplas: insidePages ? "./coplas.html" : "./pages/coplas.html",
     pezas: insidePages ? "./pezas.html" : "./pages/pezas.html",
+    media: insidePages ? "./media.html" : "./pages/media.html",
   };
 
   return map[target] || target;
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { hrefKey: "territorios", label: "Territorios", key: "territorios" },
   { hrefKey: "coplas", label: "Coplas", key: "coplas" },
   { hrefKey: "pezas", label: "Pezas", key: "pezas" },
+  { hrefKey: "media", label: "Media", key: "media" },
 ];
 
 function buildNav(current = "") {

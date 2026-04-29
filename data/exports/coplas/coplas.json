@@ -5,7 +5,9 @@
     "normalized_text": "non chas quero, non chas quero nabizas do teu nabal-e non chas quero, non chas quero que me poden facer mal-e.",
     "incipit": "Non chas quero, non chas quero",
     "notes": null,
+    "status": "published",
     "created_at": "2026-03-25 21:48:48",
+    "updated_at": "2026-03-25 21:48:48",
     "territories": [
       {
         "id": "par:1501711",
@@ -27,7 +29,9 @@
     "normalized_text": "o paxaro cando neva mete o rabo na silveira asi fan as boas mozas cando non hai quen as queira.",
     "incipit": "O páxaro cando neva mete o",
     "notes": null,
+    "status": "published",
     "created_at": "2026-03-25 20:37:25",
+    "updated_at": "2026-03-25 20:37:25",
     "territories": [
       {
         "id": "con:15052",

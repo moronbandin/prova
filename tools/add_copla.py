@@ -1,28 +1,14 @@
 #!/usr/bin/env python3
 import sqlite3
-import unicodedata
 from pathlib import Path
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = ROOT / "data" / "db" / "coplas.sqlite"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-
-def normalize_text(text: str) -> str:
-    text = text.strip().lower()
-    text = unicodedata.normalize("NFD", text)
-    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
-    text = " ".join(text.split())
-    return text
-
-
-def slugify(text: str) -> str:
-    text = normalize_text(text)
-    return text.replace(" ", "-")
-
-
-def make_incipit(text: str, max_words: int = 6) -> str:
-    words = text.strip().split()
-    return " ".join(words[:max_words])
+from backend.services.text_utils import make_incipit, normalize_text, slugify
 
 
 def search_territories(conn, query: str):
@@ -184,8 +170,8 @@ def main():
 
         cur = conn.execute(
             """
-            INSERT INTO coplas (text, normalized_text, incipit, notes)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO coplas (text, normalized_text, incipit, notes, status, updated_at)
+            VALUES (?, ?, ?, ?, 'published', CURRENT_TIMESTAMP)
             """,
             (text, normalized_text, incipit, notes or None),
         )

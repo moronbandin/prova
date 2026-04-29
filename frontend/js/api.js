@@ -4,21 +4,46 @@ function isLocalFrontendMode() {
   return window.location.pathname.includes("/frontend/");
 }
 
-function getBasePrefix() {
-  return isLocalFrontendMode() ? "../../" : "../";
+function isInsidePages() {
+  return window.location.pathname.includes("/pages/");
+}
+
+function getDataPrefix() {
+  const localFrontend = isLocalFrontendMode();
+  const insidePages = isInsidePages();
+
+  if (localFrontend) {
+    return insidePages ? "../../" : "../";
+  }
+
+  return insidePages ? "../" : "./";
+}
+
+function getAssetsPrefix() {
+  const localFrontend = isLocalFrontendMode();
+  const insidePages = isInsidePages();
+
+  if (localFrontend) {
+    return insidePages ? "../" : "./";
+  }
+
+  return insidePages ? "../" : "./";
 }
 
 function buildPaths() {
-  const base = getBasePrefix();
+  const dataBase = getDataPrefix();
+  const assetsBase = getAssetsPrefix();
 
   return {
-    territorios: `${base}data/exports/territorios/territorios.json`,
-    coplas: `${base}data/exports/coplas/coplas.json`,
+    territorios: `${dataBase}data/exports/territorios/territorios.json`,
+    coplas: `${dataBase}data/exports/coplas/coplas.json`,
+    pezas: `${dataBase}data/exports/pezas/pezas.json`,
+    media: `${dataBase}data/exports/media/media.json`,
     geo: {
-      prov: `${base}assets/web/provincias.web.geojson`,
-      com: `${base}assets/web/comarcas.web.geojson`,
-      con: `${base}assets/web/concellos.web.geojson`,
-      par: `${base}assets/web/parroquias.web.topo.json`,
+      prov: `${assetsBase}assets/web/provincias.web.geojson`,
+      com: `${assetsBase}assets/web/comarcas.web.geojson`,
+      con: `${assetsBase}assets/web/concellos.web.geojson`,
+      par: `${assetsBase}assets/web/parroquias.web.topo.json`,
     },
   };
 }
@@ -64,6 +89,16 @@ export async function getGeoLayer(tipo) {
   }
 
   return fetchJson(path);
+}
+
+export async function getPezas() {
+  const paths = buildPaths();
+  return fetchJson(paths.pezas);
+}
+
+export async function getMedia() {
+  const paths = buildPaths();
+  return fetchJson(paths.media);
 }
 
 export function clearApiCache() {
