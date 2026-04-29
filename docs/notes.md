@@ -3,7 +3,7 @@
 ## 1. Que é este proxecto
 
 Este repositorio contén un sistema para organizar, editar e publicar un arquivo relacional de coplas galegas, con vínculos a territorios, etiquetas e, no futuro, pezas e media relacionada.
-
+,
 A arquitectura do proxecto separa claramente:
 
 - **datos canónicos**: a base SQLite e os JSON mestres
