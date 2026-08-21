@@ -1308,3 +1308,488 @@ textarea:focus {
     align-items: start;
   }
 }
+
+/* =========================================================
+   22. ARQUIVO VIVO PMV
+========================================================= */
+
+.archive-shell {
+  padding: 0;
+  overflow: hidden;
+  color: #242624;
+  background: #0f1717;
+}
+
+.archive-shell input,
+.archive-shell select,
+.archive-shell textarea,
+.archive-shell button {
+  border-radius: 8px;
+}
+
+.archive-app {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 34vw);
+  min-height: 100vh;
+}
+
+.map-stage {
+  position: relative;
+  min-height: 100vh;
+  background: #1b2525;
+}
+
+.archive-map {
+  width: 100%;
+  height: 100vh;
+  min-height: 620px;
+  filter: saturate(0.82) contrast(1.04);
+}
+
+.map-command {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 500;
+  display: grid;
+  gap: 0.9rem;
+  width: min(560px, calc(100vw - 520px));
+  min-width: 360px;
+  padding: 1rem;
+  color: #f2efe5;
+  background: rgba(16, 23, 23, 0.86);
+  border: 1px solid rgba(242, 239, 229, 0.14);
+  border-radius: 8px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(16px);
+}
+
+.map-command h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 3vw, 2.8rem);
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.micro-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #b84a32;
+}
+
+.command-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 0.6rem;
+}
+
+.archive-shell .map-command input,
+.archive-shell .map-command select {
+  min-height: 46px;
+  color: #f2efe5;
+  background: rgba(242, 239, 229, 0.08);
+  border-color: rgba(242, 239, 229, 0.18);
+}
+
+.archive-shell .map-command input::placeholder {
+  color: rgba(242, 239, 229, 0.58);
+}
+
+.search-results {
+  display: grid;
+  gap: 0.45rem;
+  max-height: 330px;
+  overflow: auto;
+}
+
+.search-hit {
+  display: grid;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.75rem 0.85rem;
+  text-align: left;
+  color: #f2efe5;
+  cursor: pointer;
+  background: rgba(242, 239, 229, 0.07);
+  border: 1px solid rgba(242, 239, 229, 0.13);
+}
+
+.search-hit span {
+  font-size: 0.88rem;
+  color: rgba(242, 239, 229, 0.64);
+}
+
+.map-status {
+  position: absolute;
+  left: 20px;
+  bottom: 20px;
+  z-index: 500;
+  padding: 0.55rem 0.75rem;
+  color: #f2efe5;
+  background: rgba(16, 23, 23, 0.76);
+  border: 1px solid rgba(242, 239, 229, 0.14);
+  border-radius: 8px;
+}
+
+.workbench {
+  z-index: 700;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100vh;
+  overflow: hidden;
+  background: #f2efe5;
+  border-left: 1px solid rgba(15, 23, 23, 0.18);
+}
+
+.mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  padding: 0.65rem;
+  background: #e7e0d2;
+  border-bottom: 1px solid rgba(15, 23, 23, 0.12);
+}
+
+.mode-tab {
+  min-height: 42px;
+  font: inherit;
+  font-weight: 700;
+  color: #59615d;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.mode-tab.is-active {
+  color: #f2efe5;
+  background: #243b3d;
+  border-color: #243b3d;
+}
+
+.mode-view {
+  display: none;
+  height: 100%;
+  overflow: auto;
+  padding: 1.1rem;
+}
+
+.mode-view.is-active {
+  display: block;
+}
+
+.view-head {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.view-head h2 {
+  margin: 0;
+  font-size: clamp(1.6rem, 2.4vw, 2.35rem);
+  letter-spacing: 0;
+}
+
+.quiet {
+  margin: 0;
+  color: #64706b;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.metric {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.85rem;
+  text-align: left;
+  background: #fffaf0;
+  border: 1px solid rgba(15, 23, 23, 0.12);
+  border-radius: 8px;
+}
+
+.metric strong {
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.metric span {
+  font-size: 0.84rem;
+  color: #64706b;
+}
+
+.metric-button {
+  cursor: pointer;
+}
+
+.panel-block,
+.copla-detail,
+.future-strip {
+  display: grid;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: rgba(255, 250, 240, 0.86);
+  border: 1px solid rgba(15, 23, 23, 0.12);
+  border-radius: 8px;
+}
+
+.panel-block h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.block-title,
+.section-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.text-button {
+  padding: 0;
+  font: inherit;
+  font-weight: 800;
+  color: #7f3326;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.chip,
+.tag-chip,
+.state-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #243b3d;
+  background: #e7e0d2;
+  border: 1px solid rgba(15, 23, 23, 0.12);
+  border-radius: 8px;
+}
+
+.chip {
+  cursor: pointer;
+}
+
+.place-list,
+.media-lanes,
+.builder-sections,
+.copla-stack,
+.version-rows {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.place-list button,
+.media-lanes article,
+.builder-section,
+.builder-copla,
+.version-row {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.8rem;
+  text-align: left;
+  background: #f7f1e6;
+  border: 1px solid rgba(15, 23, 23, 0.1);
+  border-radius: 8px;
+}
+
+.place-list button {
+  cursor: pointer;
+}
+
+.place-list span,
+.media-lanes span,
+.builder-copla span,
+.copla-meta {
+  font-size: 0.9rem;
+  color: #64706b;
+}
+
+.copla-stream {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.copla-unit {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.9rem;
+  background: #f8f4ec;
+  border: 1px solid rgba(15, 23, 23, 0.12);
+  border-radius: 8px;
+}
+
+.copla-unit.is-compact .copla-body {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.copla-topline {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.copla-title {
+  padding: 0;
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+  color: #242624;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.copla-body {
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1.68;
+  white-space: pre-line;
+}
+
+.copla-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.unit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.unit-actions button,
+.section-line button {
+  min-height: 36px;
+  padding: 0.45rem 0.7rem;
+  font: inherit;
+  font-weight: 700;
+  color: #243b3d;
+  cursor: pointer;
+  background: #fffaf0;
+  border: 1px solid rgba(15, 23, 23, 0.14);
+}
+
+.comparison-grid,
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+}
+
+.variant {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem;
+  margin-bottom: 0.6rem;
+  background: #f7f1e6;
+  border: 1px solid rgba(15, 23, 23, 0.1);
+  border-radius: 8px;
+}
+
+.builder-section {
+  background: #ebe4d6;
+}
+
+.json-preview {
+  max-height: 260px;
+  padding: 0.75rem;
+  overflow: auto;
+  color: #f2efe5;
+  background: #172020;
+  border-radius: 8px;
+}
+
+.archive-shell label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 700;
+}
+
+.archive-shell textarea {
+  resize: vertical;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 980px) {
+  .archive-shell {
+    overflow: auto;
+  }
+
+  .archive-app {
+    grid-template-columns: 1fr;
+  }
+
+  .map-stage {
+    min-height: 58vh;
+  }
+
+  .archive-map {
+    height: 58vh;
+    min-height: 420px;
+  }
+
+  .map-command {
+    width: calc(100vw - 24px);
+    min-width: 0;
+    top: 12px;
+    left: 12px;
+  }
+
+  .workbench {
+    height: auto;
+    min-height: 42vh;
+    border-left: 0;
+    border-top: 1px solid rgba(15, 23, 23, 0.18);
+  }
+}
+
+@media (max-width: 640px) {
+  .command-grid,
+  .comparison-grid,
+  .form-grid,
+  .metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mode-tabs {
+    overflow-x: auto;
+    grid-template-columns: repeat(4, minmax(110px, 1fr));
+  }
+
+  .map-command h1 {
+    font-size: 1.45rem;
+  }
+}

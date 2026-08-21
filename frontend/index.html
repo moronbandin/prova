@@ -3,98 +3,57 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Coplas Galegas</title>
-  <meta name="description" content="Explorador cartográfico de coplas, pezas e media da tradición oral galega.">
+  <title>Arquivo Vivo de Coplas</title>
+  <meta name="description" content="PMV dun atlas textual, musical e editorial de coplas galegas.">
   <link rel="stylesheet" href="./css/style.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
-<body class="map-first-site">
-  <div id="site-nav"></div>
+<body class="archive-shell">
+  <main class="archive-app" aria-label="Arquivo Vivo de Coplas">
+    <section class="map-stage" aria-label="Mapa territorial">
+      <div id="archive-map" class="archive-map"></div>
 
-  <main class="explorer-canvas">
-    <div id="explorer-map" class="explorer-map explorer-map-home"></div>
-
-    <div class="explorer-overlay explorer-left-column">
-      <aside class="explorer-search-shell">
-        <div class="map-panel-intro">
-          <p class="eyebrow">Mapa vivo do arquivo</p>
-          <h1>Coplas Galegas</h1>
-          <p class="hero-lead">
-            Navega como nun atlas vivo: busca, ilumina e entra nos territorios para ler as coplas que lles pertencen.
-          </p>
+      <div class="map-command">
+        <div>
+          <p class="micro-label">Arquivo Vivo</p>
+          <h1>Coplas por lugar, texto e uso</h1>
         </div>
-
-        <div class="map-panel-controls explorer-search-controls">
-          <label class="toolbar-label" for="explorer-search">Buscar lugar</label>
-          <input id="explorer-search" type="search" placeholder="Toutón, Barro de Arén, Mondariz, 1500101...">
-
-          <label class="toolbar-label" for="explorer-layer">Nivel cartográfico</label>
-          <select id="explorer-layer">
-            <option value="prov">Provincias</option>
-            <option value="com">Comarcas</option>
+        <div class="command-grid">
+          <label class="visually-hidden" for="global-search">Buscar</label>
+          <input id="global-search" type="search" placeholder="Buscar Malpica, Muxía, unha palabra, unha etiqueta...">
+          <label class="visually-hidden" for="map-layer">Capa</label>
+          <select id="map-layer">
             <option value="con" selected>Concellos</option>
             <option value="par">Parroquias</option>
+            <option value="com">Comarcas</option>
+            <option value="prov">Provincias</option>
           </select>
-
-          <p id="explorer-layer-status" class="map-layer-status" role="status">Cargando capa cartográfica...</p>
-          <div id="explorer-results" class="explorer-results"></div>
         </div>
-      </aside>
+        <div id="search-results" class="search-results"></div>
+      </div>
 
-      <section class="explorer-inspector">
-        <div class="map-panel-section">
-          <p class="eyebrow">Territorio activo</p>
-          <h2 id="explorer-title">Explora Galicia desde o mapa</h2>
-          <p id="explorer-subtitle" class="muted">Busca un lugar, cambia de capa e entra no territorio desde a cartografía.</p>
-          <div id="explorer-summary" class="explorer-stats"></div>
-        </div>
+      <div class="map-status">
+        <span id="map-status-text">Cargando atlas...</span>
+      </div>
+    </section>
 
-        <section class="map-panel-section">
-          <div class="section-head">
-            <h3 class="section-title">Xerarquía</h3>
-          </div>
-          <div id="explorer-hierarchy" class="compact-chip-row"></div>
-        </section>
+    <aside class="workbench" aria-label="Banco de traballo">
+      <nav class="mode-tabs" aria-label="Vistas">
+        <button class="mode-tab is-active" type="button" data-mode="place">Lugar</button>
+        <button class="mode-tab" type="button" data-mode="corpus">Corpus</button>
+        <button class="mode-tab" type="button" data-mode="builder">Obradoiro</button>
+        <button class="mode-tab" type="button" data-mode="submit">Alta</button>
+      </nav>
 
-        <section class="map-panel-section">
-          <div class="section-head">
-            <h3 class="section-title">Subterritorios</h3>
-          </div>
-          <div id="explorer-children" class="linked-block"></div>
-        </section>
-
-        <section class="map-panel-section">
-          <div class="section-head">
-            <h3 class="section-title">Coplas deste lugar</h3>
-            <a id="explorer-coplas-link" class="text-action" href="./pages/coplas.html">Ver todas</a>
-          </div>
-          <div id="explorer-coplas-preview" class="atlas-copla-list"></div>
-        </section>
-
-        <section class="map-panel-section">
-          <div class="section-head">
-            <h3 class="section-title">Accións</h3>
-          </div>
-          <div id="explorer-actions" class="panel-actions"></div>
-        </section>
-      </section>
-    </div>
-
-    <div class="explorer-overlay explorer-quick-actions">
-      <a class="panel-action" href="./pages/coplas.html">Corpus</a>
-      <a class="panel-action" href="./pages/pezas.html">Pezas</a>
-      <a class="panel-action" href="./pages/importar.html">Admin local</a>
-      <a class="panel-action" href="./pages/mapa.html">Explorador amplo</a>
-    </div>
+      <section id="place-view" class="mode-view is-active"></section>
+      <section id="corpus-view" class="mode-view"></section>
+      <section id="builder-view" class="mode-view"></section>
+      <section id="submit-view" class="mode-view"></section>
+    </aside>
   </main>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/topojson-client@3"></script>
-  <script type="module">
-    import { mountTopNav } from "./js/nav.js";
-    import { initExplorer } from "./js/explorer.js";
-    mountTopNav("home");
-    initExplorer({ defaultLayer: "con" });
-  </script>
+  <script type="module" src="./js/archive_app.js"></script>
 </body>
 </html>

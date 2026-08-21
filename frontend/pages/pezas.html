@@ -3,76 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pezas</title>
-  <link rel="stylesheet" href="../css/style.css">
+  <title>Obradoiro</title>
+  <meta http-equiv="refresh" content="0; url=../index.html?mode=builder">
+  <script>window.location.replace("../index.html?mode=builder");</script>
 </head>
-<body>
-  <div id="site-nav"></div>
-
-  <header class="site-header">
-    <div id="breadcrumbs"></div>
-    <h1>Pezas</h1>
-    <p class="muted">Montaxes ordenadas feitas a partir de coplas do arquivo.</p>
-  </header>
-
-  <main class="page-wrap">
-    <section class="card">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">Montador principal</p>
-          <h2 class="section-title">Peza en construción</h2>
-        </div>
-        <p id="draft-count" class="muted"></p>
-      </div>
-
-      <div class="piece-builder-grid">
-        <div class="piece-builder-form">
-          <label class="toolbar-label" for="piece-title">Título</label>
-          <input id="piece-title" type="text" placeholder="Muiñeira de Toutón">
-
-          <label class="toolbar-label" for="piece-author">Autoría</label>
-          <input id="piece-author" type="text" placeholder="Alejandro">
-
-          <label class="toolbar-label" for="piece-context">Territorio de contexto</label>
-          <input id="piece-context" type="text" placeholder="Parroquia, concello..." readonly>
-
-          <label class="toolbar-label" for="piece-description">Descrición</label>
-          <textarea id="piece-description" rows="4" placeholder="Notas breves sobre o uso da peza"></textarea>
-
-          <label class="toolbar-label" for="piece-notes">Notas internas</label>
-          <textarea id="piece-notes" rows="4" placeholder="Observacións de montaxe ou interpretación"></textarea>
-
-          <div class="toolbar-actions">
-            <button id="piece-download-btn" type="button">Descargar JSON</button>
-            <button id="piece-print-btn" type="button">Abrir folla A4 / PDF</button>
-            <button id="piece-html-btn" type="button">Descargar folla HTML</button>
-            <button id="piece-add-section-btn" type="button">Engadir parte</button>
-            <button id="piece-clear-btn" type="button">Limpar peza</button>
-            <a id="piece-context-link" class="panel-action panel-action-ghost" href="./mapa.html">Buscar máis coplas no mapa</a>
-          </div>
-        </div>
-
-        <div>
-          <h3 class="section-title">Partes e coplas seleccionadas</h3>
-          <div id="draft-list" class="linked-block"></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="card">
-      <label class="toolbar-label" for="search">Buscar pezas</label>
-      <input id="search" type="search" placeholder="Título, autoría, territorio..." autocomplete="off">
-    </section>
-
-    <section class="card">
-      <div class="section-head">
-        <h2 class="section-title">Listado</h2>
-        <p id="results-count" class="muted"></p>
-      </div>
-      <div id="piece-list" class="linked-block"></div>
-    </section>
-  </main>
-
-  <script type="module" src="../js/pezas.js"></script>
-</body>
+<body><a href="../index.html?mode=builder">Abrir obradoiro</a></body>
 </html>
