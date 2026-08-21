@@ -1452,10 +1452,13 @@ textarea:focus {
 .workbench {
   z-index: 700;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-width: 0;
   height: 100vh;
   overflow: hidden;
-  background: #f8faf8;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.86), rgba(246,248,247,0.94)),
+    #f8faf8;
   border-left: 1px solid rgba(20, 35, 38, 0.1);
   box-shadow: -18px 0 60px rgba(24, 38, 39, 0.08);
 }
@@ -1463,8 +1466,8 @@ textarea:focus {
 .workbench-controls {
   display: flex;
   gap: 0.45rem;
-  padding: 0.65rem 0.65rem 0;
-  background: #f8faf8;
+  padding: 0.75rem 0.8rem 0;
+  background: transparent;
 }
 
 .workbench-controls button {
@@ -1485,42 +1488,77 @@ textarea:focus {
 }
 
 .workbench-collapsed .mode-tabs {
-  grid-template-columns: 1fr;
+  flex-direction: column;
   align-content: start;
   height: 100vh;
+  padding: 0.55rem;
+}
+
+.workbench-collapsed .mode-tab {
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: 48px;
+  padding-inline: 0.35rem;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.workbench-collapsed .workbench-controls {
+  display: grid;
+  padding: 0.55rem;
+}
+
+.workbench-collapsed #focus-workbench {
+  display: none;
+}
+
+.workbench-collapsed #collapse-workbench {
+  min-height: 44px;
+  padding: 0.25rem;
+  font-size: 0.72rem;
 }
 
 .mode-tabs {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0;
-  padding: 0.65rem;
-  background: #f8faf8;
+  position: relative;
+  z-index: 5;
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.65rem 0.8rem 0.75rem;
+  background: transparent;
   border-bottom: 1px solid rgba(20, 35, 38, 0.08);
 }
 
 .mode-tab {
+  flex: 1 1 0;
   min-height: 42px;
+  min-width: 0;
   font: inherit;
+  font-size: 0.92rem;
   font-weight: 700;
   color: #68716e;
   cursor: pointer;
-  background: transparent;
-  border: 1px solid transparent;
+  background: rgba(238, 242, 239, 0.75);
+  border: 1px solid rgba(20, 35, 38, 0.06);
+  border-radius: 999px;
+  pointer-events: auto;
+  white-space: nowrap;
 }
 
 .mode-tab.is-active {
   color: #f8faf8;
   background: #1f2f31;
   border-color: #1f2f31;
-  border-radius: 999px;
+  box-shadow: 0 8px 22px rgba(31, 47, 49, 0.18);
 }
 
 .mode-view {
+  position: relative;
+  z-index: 1;
   display: none;
   height: 100%;
+  min-height: 0;
   overflow: auto;
-  padding: 1.15rem;
+  padding: 1.15rem 1.25rem 1.4rem;
 }
 
 .mode-view.is-active {
@@ -1530,12 +1568,13 @@ textarea:focus {
 .view-head {
   display: grid;
   gap: 0.25rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.1rem;
 }
 
 .view-head h2 {
   margin: 0;
   font-size: clamp(1.6rem, 2.4vw, 2.35rem);
+  font-weight: 760;
   letter-spacing: 0;
 }
 
@@ -1556,10 +1595,11 @@ textarea:focus {
   gap: 0.25rem;
   padding: 0.85rem;
   text-align: left;
-  background: #ffffff;
-  border: 1px solid rgba(20, 35, 38, 0.08);
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(20, 35, 38, 0.04);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(20, 35, 38, 0.06);
+  border-radius: 20px;
+  box-shadow: 0 12px 34px rgba(20, 35, 38, 0.035);
+  backdrop-filter: blur(18px);
 }
 
 .metric strong {
@@ -1583,10 +1623,11 @@ textarea:focus {
   gap: 0.8rem;
   margin-bottom: 1rem;
   padding: 1rem;
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(20, 35, 38, 0.08);
-  border-radius: 18px;
-  box-shadow: 0 14px 36px rgba(20, 35, 38, 0.05);
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(20, 35, 38, 0.06);
+  border-radius: 22px;
+  box-shadow: 0 16px 44px rgba(20, 35, 38, 0.045);
+  backdrop-filter: blur(18px);
 }
 
 .panel-block h3 {
@@ -1677,14 +1718,106 @@ textarea:focus {
   gap: 0.75rem;
 }
 
+.territory-coplas,
+.territory-copla-group {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.territory-copla-group + .territory-copla-group {
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(20, 35, 38, 0.08);
+}
+
+.territory-copla-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.75fr) minmax(0, 1.2fr);
+  gap: 0.55rem 0.85rem;
+  align-items: start;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid rgba(20, 35, 38, 0.07);
+}
+
+.territory-copla-row:last-child {
+  border-bottom: 0;
+}
+
+.territory-copla-row p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1.45;
+}
+
+.territory-copla-row .copla-meta,
+.territory-copla-row .unit-actions {
+  grid-column: 2;
+}
+
 .copla-unit {
   display: grid;
   gap: 0.65rem;
   padding: 0.9rem;
-  background: #ffffff;
-  border: 1px solid rgba(20, 35, 38, 0.08);
-  border-radius: 18px;
-  box-shadow: 0 12px 30px rgba(20, 35, 38, 0.05);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(20, 35, 38, 0.06);
+  border-radius: 22px;
+  box-shadow: 0 12px 32px rgba(20, 35, 38, 0.04);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.copla-unit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 42px rgba(20, 35, 38, 0.07);
+}
+
+.place-finder {
+  display: grid;
+  gap: 0.7rem;
+  margin-bottom: 1rem;
+  padding: 0.8rem;
+  background: rgba(239, 244, 241, 0.84);
+  border: 1px solid rgba(20, 35, 38, 0.06);
+  border-radius: 22px;
+}
+
+.place-finder label {
+  font-size: 0.84rem;
+  color: #6f7975;
+}
+
+.place-search-row input {
+  min-height: 46px;
+  background: rgba(255, 255, 255, 0.86);
+  border-color: rgba(20, 35, 38, 0.08);
+}
+
+.place-search-results {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.place-search-results button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  min-height: 42px;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(20, 35, 38, 0.06);
+  border-radius: 14px;
+}
+
+.place-search-results span {
+  flex: 0 0 auto;
+  font-size: 0.84rem;
+  color: #6f7975;
 }
 
 .copla-unit.is-compact .copla-body {
@@ -1910,5 +2043,14 @@ textarea:focus {
 
   .map-command h1 {
     font-size: 1.45rem;
+  }
+
+  .territory-copla-row {
+    grid-template-columns: 1fr;
+  }
+
+  .territory-copla-row .copla-meta,
+  .territory-copla-row .unit-actions {
+    grid-column: auto;
   }
 }

@@ -242,6 +242,51 @@ function renderSearch(query = "") {
   });
 }
 
+function renderPlaceFinder() {
+  return `
+    <section class="place-finder">
+      <label for="place-search">Buscar lugar</label>
+      <div class="place-search-row">
+        <input id="place-search" type="search" placeholder="Malpica, O Temple, Barro de Arén...">
+      </div>
+      <div id="place-search-results" class="place-search-results"></div>
+    </section>
+  `;
+}
+
+function bindPlaceFinder(root) {
+  const input = $("#place-search", root);
+  const results = $("#place-search-results", root);
+  if (!input || !results) return;
+
+  input.addEventListener("input", () => {
+    const query = input.value.trim();
+    if (!query) {
+      results.innerHTML = "";
+      return;
+    }
+    const matches = searchTerritories(state.territorios, query).slice(0, 12);
+    results.innerHTML = matches.map(item => `
+      <button type="button" data-place-result="${item.id}">
+        <strong>${escapeHtml(item.nome)}</strong>
+        <span>${escapeHtml(TYPE_LABELS[item.tipo] || item.tipo)}</span>
+      </button>
+    `).join("") || `<p class="quiet">Sen resultados.</p>`;
+    all("[data-place-result]", results).forEach(button => {
+      button.addEventListener("click", () => {
+        const territory = state.territorios.find(item => item.id === button.dataset.placeResult);
+        if (territory) selectTerritory(territory, { switchMode: true });
+      });
+    });
+  });
+
+  input.addEventListener("keydown", event => {
+    if (event.key !== "Enter") return;
+    const first = searchTerritories(state.territorios, input.value)[0];
+    if (first) selectTerritory(first, { switchMode: true });
+  });
+}
+
 function renderPlaceView() {
   const view = $("#place-view");
   const territory = state.selectedTerritory;
@@ -253,6 +298,7 @@ function renderPlaceView() {
         <h2>Escolle un punto do atlas</h2>
         <p class="quiet">O territorio é unha porta de entrada, non unha gaiola: tamén hai coplas xerais, sen adscrición e variantes textuais.</p>
       </div>
+      ${renderPlaceFinder()}
       <div class="metric-grid">
         <div class="metric"><strong>${state.territorios.length}</strong><span>lugares</span></div>
         <div class="metric"><strong>${state.coplas.length}</strong><span>coplas</span></div>
@@ -263,17 +309,21 @@ function renderPlaceView() {
         <span>Cada lugar reserva espazo para melodías: mp3, mp4, gravacións, vídeos e ligazóns tratadas segundo a fonte.</span>
       </div>
     `;
+    bindPlaceFinder(view);
     return;
   }
 
   const direct = ctx.coplas.filter(copla => (copla.territories || []).some(item => item.id === territory.id)).length;
   const inherited = Math.max(ctx.coplas.length - direct, 0);
+  const directCoplas = ctx.coplas.filter(copla => (copla.territories || []).some(item => item.id === territory.id));
+  const inheritedCoplas = ctx.coplas.filter(copla => !(copla.territories || []).some(item => item.id === territory.id));
   view.innerHTML = `
     <div class="view-head">
       <p class="micro-label">${escapeHtml(TYPE_LABELS[territory.tipo] || territory.tipo)}</p>
       <h2>${escapeHtml(territory.nome)}</h2>
       <p class="quiet">${direct} directas · ${inherited} herdadas</p>
     </div>
+    ${renderPlaceFinder()}
     <div class="metric-grid">
       <div class="metric"><strong>${ctx.coplas.length}</strong><span>coplas</span></div>
       <div class="metric"><strong>${ctx.children.length}</strong><span>subterritorios</span></div>
@@ -288,8 +338,20 @@ function renderPlaceView() {
         <h3>Coplas do lugar</h3>
         <button class="text-button" type="button" data-mode-jump="corpus">Abrir corpus</button>
       </div>
-      <div class="copla-stream">
-        ${ctx.coplas.slice(0, 6).map(copla => coplaCard(copla, { compact: true })).join("") || `<p class="quiet">Aínda non hai coplas neste lugar.</p>`}
+      <div class="territory-coplas">
+        ${directCoplas.length ? `
+          <div class="territory-copla-group">
+            <p class="micro-label">Directas</p>
+            ${directCoplas.slice(0, 6).map(copla => placeCoplaRow(copla)).join("")}
+          </div>
+        ` : ""}
+        ${inheritedCoplas.length ? `
+          <div class="territory-copla-group">
+            <p class="micro-label">Herdadas dos subterritorios</p>
+            ${inheritedCoplas.slice(0, 6).map(copla => placeCoplaRow(copla)).join("")}
+          </div>
+        ` : ""}
+        ${!ctx.coplas.length ? `<p class="quiet">Aínda non hai coplas neste lugar.</p>` : ""}
       </div>
     </section>
     <section class="panel-block">
@@ -313,7 +375,26 @@ function renderPlaceView() {
     });
   });
   all("[data-mode-jump]", view).forEach(button => button.addEventListener("click", () => setMode(button.dataset.modeJump)));
+  bindPlaceFinder(view);
   bindCoplaButtons(view);
+}
+
+function placeCoplaRow(copla) {
+  const excerpt = String(copla.text || "").replace(/\s+/g, " ").trim();
+  return `
+    <article class="territory-copla-row">
+      <button type="button" class="copla-title" data-open-copla="${copla.id}">${escapeHtml(copla.incipit || `Copla #${copla.id}`)}</button>
+      <p>${escapeHtml(excerpt)}</p>
+      <div class="copla-meta">
+        <span>${escapeHtml(coplaPlaceLabel(copla))}</span>
+        <span>${(copla.versions || []).length ? `${(copla.versions || []).length} variantes` : "texto único"}</span>
+      </div>
+      <div class="unit-actions">
+        <button type="button" data-add-to-builder="${copla.id}">Obradoiro</button>
+        <button type="button" data-open-copla="${copla.id}">Ler</button>
+      </div>
+    </article>
+  `;
 }
 
 function coplaCard(copla, options = {}) {
