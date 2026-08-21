@@ -1,4 +1,4 @@
-import { getCoplas, getGeoLayer, getMedia, getPezas, getTerritorios } from "./api.js";
+import { clearApiCache, getCoplas, getGeoLayer, getMedia, getPezas, getTerritorios } from "./api.js";
 import { escapeHtml, nl2br, normalizeText, slugify } from "./utils.js";
 import {
   TYPE_LABELS,
@@ -28,6 +28,9 @@ const state = {
   selectedTerritory: null,
   selectedCoplaId: null,
   mode: "place",
+  workbenchCollapsed: false,
+  workbenchFocused: false,
+  submitTerritoryId: "",
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -82,7 +85,16 @@ function setMode(mode) {
   state.mode = mode;
   all(".mode-tab").forEach(tab => tab.classList.toggle("is-active", tab.dataset.mode === mode));
   all(".mode-view").forEach(view => view.classList.toggle("is-active", view.id === `${mode}-view`));
+  document.body.classList.toggle("is-builder-mode", mode === "builder");
   renderActiveView();
+}
+
+function syncWorkbenchChrome() {
+  document.body.classList.toggle("workbench-collapsed", state.workbenchCollapsed);
+  document.body.classList.toggle("workbench-focused", state.workbenchFocused);
+  $("#collapse-workbench").textContent = state.workbenchCollapsed ? "Abrir panel" : "Panel";
+  $("#focus-workbench").textContent = state.workbenchFocused ? "Mapa + panel" : "Foco";
+  window.setTimeout(() => state.map?.invalidateSize(), 220);
 }
 
 function topoToGeo(data) {
@@ -110,7 +122,7 @@ function placeContext(territory = state.selectedTerritory) {
 }
 
 function territoryLine(territory) {
-  return territory ? `${TYPE_LABELS[territory.tipo] || territory.tipo} · ${territory.id}` : "Sen territorio";
+  return territory ? `${TYPE_LABELS[territory.tipo] || territory.tipo}` : "Sen territorio";
 }
 
 function coplaPlaceLabel(copla) {
@@ -260,7 +272,7 @@ function renderPlaceView() {
     <div class="view-head">
       <p class="micro-label">${escapeHtml(TYPE_LABELS[territory.tipo] || territory.tipo)}</p>
       <h2>${escapeHtml(territory.nome)}</h2>
-      <p class="quiet">${escapeHtml(territory.id)} · ${direct} directas · ${inherited} herdadas</p>
+      <p class="quiet">${direct} directas · ${inherited} herdadas</p>
     </div>
     <div class="metric-grid">
       <div class="metric"><strong>${ctx.coplas.length}</strong><span>coplas</span></div>
@@ -421,7 +433,20 @@ function renderBuilderView() {
       <div class="builder-sections">
         ${draft.sections.map(section => `<article class="builder-section" data-section-id="${section.id}">
           <div class="section-line"><select data-section-label="${section.id}">${rhythmOptions}</select><button type="button" data-remove-section="${section.id}">Quitar</button></div>
-          <div class="copla-stack">${section.coplas.map(item => `<div class="builder-copla"><strong>${escapeHtml(item.incipit || `Copla #${item.id}`)}</strong><span>${escapeHtml(item.territory || "")}</span><div class="unit-actions"><button type="button" data-up="${item.id}" data-section="${section.id}">Subir</button><button type="button" data-down="${item.id}" data-section="${section.id}">Baixar</button><button type="button" data-remove-copla="${item.id}">Quitar</button></div></div>`).join("") || `<p class="quiet">Engade coplas desde Lugar ou Corpus.</p>`}</div>
+          <div class="copla-stack" data-drop-section="${section.id}">
+            ${section.coplas.map(item => `
+              <article class="builder-copla" draggable="true" data-drag-copla="${item.id}" data-section="${section.id}" tabindex="0">
+                <strong>${escapeHtml(item.incipit || `Copla #${item.id}`)}</strong>
+                <span>${escapeHtml(item.territory || "")}</span>
+                <div class="builder-copla-preview">${nl2br(item.text || "")}</div>
+                <div class="unit-actions">
+                  <button type="button" data-up="${item.id}" data-section="${section.id}">Subir</button>
+                  <button type="button" data-down="${item.id}" data-section="${section.id}">Baixar</button>
+                  <button type="button" data-remove-copla="${item.id}">Quitar</button>
+                </div>
+              </article>
+            `).join("") || `<p class="quiet">Arrastra aquí coplas desde outra parte ou engádeas desde Lugar/Corpus.</p>`}
+          </div>
         </article>`).join("")}
       </div>
     </section>
@@ -473,6 +498,7 @@ function renderBuilderView() {
       renderBuilderView();
     }
   }));
+  bindBuilderDrag(view);
   $("#download-piece-json")?.addEventListener("click", () => downloadText("peza.json", JSON.stringify(buildPiecePayload(), null, 2), "application/json"));
   $("#open-a4")?.addEventListener("click", openA4Sheet);
   $("#clear-builder")?.addEventListener("click", () => {
@@ -501,6 +527,58 @@ function buildPiecePayload() {
   };
 }
 
+function moveDraftCopla(coplaId, targetSectionId, beforeCoplaId = null) {
+  const draft = loadDraft();
+  let moving = null;
+  draft.sections.forEach(section => {
+    const index = section.coplas.findIndex(item => Number(item.id) === Number(coplaId));
+    if (index >= 0) {
+      [moving] = section.coplas.splice(index, 1);
+    }
+  });
+  if (!moving) return;
+  const target = draft.sections.find(section => section.id === targetSectionId) || draft.sections[0];
+  const beforeIndex = beforeCoplaId
+    ? target.coplas.findIndex(item => Number(item.id) === Number(beforeCoplaId))
+    : -1;
+  if (beforeIndex >= 0) target.coplas.splice(beforeIndex, 0, moving);
+  else target.coplas.push(moving);
+  saveDraft(draft);
+  renderBuilderView();
+}
+
+function bindBuilderDrag(root) {
+  all("[data-drag-copla]", root).forEach(card => {
+    card.addEventListener("dragstart", event => {
+      event.dataTransfer.setData("text/plain", card.dataset.dragCopla);
+      event.dataTransfer.effectAllowed = "move";
+      card.classList.add("is-dragging");
+    });
+    card.addEventListener("dragend", () => card.classList.remove("is-dragging"));
+    card.addEventListener("dragover", event => event.preventDefault());
+    card.addEventListener("drop", event => {
+      event.preventDefault();
+      const coplaId = event.dataTransfer.getData("text/plain");
+      if (!coplaId || Number(coplaId) === Number(card.dataset.dragCopla)) return;
+      moveDraftCopla(coplaId, card.dataset.section, card.dataset.dragCopla);
+    });
+  });
+
+  all("[data-drop-section]", root).forEach(stack => {
+    stack.addEventListener("dragover", event => {
+      event.preventDefault();
+      stack.classList.add("is-drop-target");
+    });
+    stack.addEventListener("dragleave", () => stack.classList.remove("is-drop-target"));
+    stack.addEventListener("drop", event => {
+      event.preventDefault();
+      stack.classList.remove("is-drop-target");
+      const coplaId = event.dataTransfer.getData("text/plain");
+      if (coplaId) moveDraftCopla(coplaId, stack.dataset.dropSection);
+    });
+  });
+}
+
 function openA4Sheet() {
   const draft = loadDraft();
   const html = `<!doctype html><html lang="gl"><head><meta charset="utf-8"><title>${escapeHtml(draft.title || "Peza")}</title><style>@page{size:A4;margin:16mm}body{font-family:Avenir Next,Segoe UI,sans-serif;color:#1d2326}h1{font-size:24pt;margin:0 0 2mm}header{border-bottom:1px solid #bbb;padding-bottom:5mm;margin-bottom:8mm}.meta{color:#667;font-size:10pt}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10mm}.part{break-inside:avoid;margin-bottom:8mm}h2{text-transform:uppercase;font-size:12pt;color:#7f3326;letter-spacing:.08em}.copla{font-family:Georgia,serif;font-size:11pt;line-height:1.45;margin-bottom:5mm;white-space:pre-line}.incipit{font-weight:700;font-family:Avenir Next,Segoe UI,sans-serif;font-size:9pt;margin-bottom:1mm}</style></head><body><header><h1>${escapeHtml(draft.title || "Peza sen título")}</h1><div class="meta">${escapeHtml(draft.author || "Sen autoría")}</div></header><main class="grid">${draft.sections.filter(section => section.coplas.length).map(section => `<section class="part"><h2>${escapeHtml(section.label)}</h2>${section.coplas.map(copla => `<article><div class="incipit">${escapeHtml(copla.incipit || "")}</div><div class="copla">${escapeHtml(copla.text || "")}</div></article>`).join("")}</section>`).join("")}</main><script>window.print();</script></body></html>`;
@@ -513,14 +591,19 @@ function openA4Sheet() {
 function renderSubmitView() {
   const view = $("#submit-view");
   const batch = loadBatch();
+  const selectedTerritory = state.territorios.find(item => item.id === state.submitTerritoryId) || state.selectedTerritory;
   view.innerHTML = `
-    <div class="view-head"><p class="micro-label">Alta local</p><h2>Nova copla ou variante</h2><p class="quiet">Isto non escribe directamente na base: prepara un lote JSON para importar co pipeline local.</p></div>
+    <div class="view-head"><p class="micro-label">Alta local</p><h2>Nova copla ou variante</h2><p class="quiet">Se corres o proxecto con <code>./serve.sh</code>, este formulario pode gardar directamente na SQLite e rexenerar a web.</p></div>
     <section class="panel-block">
       <label>Texto principal<textarea id="new-text" rows="5" placeholder="Escribe a copla..."></textarea></label>
       <div class="form-grid">
         <label>Estado territorial<select id="new-state"><option value="assigned">Asignada a lugar</option><option value="unassigned">Lugar descoñecido</option><option value="general">Galiza xeral</option></select></label>
-        <label>Territorio<select id="new-territory"><option value="">Sen territorio</option>${state.territorios.slice(0, 900).map(item => `<option value="${item.id}">${escapeHtml(item.nome)} · ${escapeHtml(TYPE_LABELS[item.tipo] || item.tipo)}</option>`).join("")}</select></label>
+        <label>Territorio
+          <input id="territory-query" type="search" value="${escapeHtml(selectedTerritory?.nome || "")}" placeholder="Buscar concello, parroquia, comarca...">
+        </label>
       </div>
+      <div id="territory-picker-results" class="territory-picker-results"></div>
+      <p id="selected-territory-label" class="quiet">${selectedTerritory ? `Seleccionado: ${escapeHtml(selectedTerritory.nome)} (${escapeHtml(TYPE_LABELS[selectedTerritory.tipo] || selectedTerritory.tipo)})` : "Sen territorio seleccionado."}</p>
       <label>Etiquetas<input id="new-tags" type="text" placeholder="amor, romaría, traballo..."></label>
       <label>Notas<textarea id="new-notes" rows="3" placeholder="Fonte, contexto, dúbidas editoriais..."></textarea></label>
     </section>
@@ -529,12 +612,14 @@ function renderSubmitView() {
       <div id="version-rows" class="version-rows"></div>
     </section>
     <section class="panel-block">
-      <div class="unit-actions"><button type="button" id="add-to-batch">Engadir ao lote</button><button type="button" id="download-batch">Exportar lote JSON</button><button type="button" id="clear-batch">Limpar lote</button></div>
+      <div class="unit-actions"><button type="button" id="save-direct">Gardar na base local</button><button type="button" id="add-to-batch">Engadir ao lote</button><button type="button" id="download-batch">Exportar lote JSON</button><button type="button" id="clear-batch">Limpar lote</button></div>
+      <p id="submit-feedback" class="quiet"></p>
       <p class="quiet">${batch.length} entradas no lote.</p>
       <pre class="json-preview">${escapeHtml(JSON.stringify({ coplas: batch }, null, 2))}</pre>
     </section>
   `;
-  $("#new-territory").value = state.selectedTerritory?.id || "";
+  if (!state.submitTerritoryId && state.selectedTerritory) state.submitTerritoryId = state.selectedTerritory.id;
+  bindTerritoryPicker();
   $("#add-version-row")?.addEventListener("click", () => {
     const row = document.createElement("div");
     row.className = "version-row";
@@ -542,17 +627,39 @@ function renderSubmitView() {
     $("#version-rows").appendChild(row);
   });
   $("#add-to-batch")?.addEventListener("click", () => {
+    const payload = buildCoplaPayloadFromForm();
+    if (!payload) return;
+    const next = loadBatch();
+    next.unshift(payload);
+    saveBatch(next);
+    renderSubmitView();
+  });
+  $("#save-direct")?.addEventListener("click", saveCoplaDirect);
+  $("#download-batch")?.addEventListener("click", () => downloadText("coplas-lote.json", JSON.stringify({ coplas: loadBatch() }, null, 2), "application/json"));
+  $("#clear-batch")?.addEventListener("click", () => {
+    saveBatch([]);
+    renderSubmitView();
+  });
+}
+
+function buildCoplaPayloadFromForm() {
     const text = $("#new-text").value.trim();
-    if (!text) return;
-    const territoryId = $("#new-territory").value;
+    if (!text) {
+      $("#submit-feedback").textContent = "Escribe o texto da copla antes de gardar.";
+      return null;
+    }
+    const territoryId = state.submitTerritoryId;
     const territoryState = $("#new-state").value;
+    if (territoryState === "assigned" && !territoryId) {
+      $("#submit-feedback").textContent = "Busca e selecciona un territorio, ou cambia o estado territorial.";
+      return null;
+    }
     const versions = all(".version-row").map(row => ({
       label: $("input", row).value,
       text: $("textarea", row).value,
       notes: all("input", row)[1].value,
     })).filter(item => item.text.trim());
-    const next = loadBatch();
-    next.unshift({
+    return {
       text,
       notes: $("#new-notes").value,
       status: "published",
@@ -560,15 +667,58 @@ function renderSubmitView() {
       territories: territoryState === "assigned" && territoryId ? [{ id: territoryId }] : [],
       tags: $("#new-tags").value.split(",").map(item => normalizeText(item)).filter(Boolean),
       versions,
+    };
+}
+
+function bindTerritoryPicker() {
+  const input = $("#territory-query");
+  const results = $("#territory-picker-results");
+  const renderResults = () => {
+    const q = input.value.trim();
+    if (!q) {
+      results.innerHTML = "";
+      return;
+    }
+    const matches = searchTerritories(state.territorios, q).slice(0, 10);
+    results.innerHTML = matches.map(item => `
+      <button type="button" data-pick-territory="${item.id}">
+        <strong>${escapeHtml(item.nome)}</strong>
+        <span>${escapeHtml(TYPE_LABELS[item.tipo] || item.tipo)}</span>
+      </button>
+    `).join("") || `<p class="quiet">Sen resultados.</p>`;
+    all("[data-pick-territory]", results).forEach(button => {
+      button.addEventListener("click", () => {
+        const territory = state.territorios.find(item => item.id === button.dataset.pickTerritory);
+        if (!territory) return;
+        state.submitTerritoryId = territory.id;
+        input.value = territory.nome;
+        $("#selected-territory-label").textContent = `Seleccionado: ${territory.nome} (${TYPE_LABELS[territory.tipo] || territory.tipo})`;
+        results.innerHTML = "";
+      });
     });
-    saveBatch(next);
-    renderSubmitView();
-  });
-  $("#download-batch")?.addEventListener("click", () => downloadText("coplas-lote.json", JSON.stringify({ coplas: loadBatch() }, null, 2), "application/json"));
-  $("#clear-batch")?.addEventListener("click", () => {
-    saveBatch([]);
-    renderSubmitView();
-  });
+  };
+  input.addEventListener("input", renderResults);
+}
+
+async function saveCoplaDirect() {
+  const payload = buildCoplaPayloadFromForm();
+  if (!payload) return;
+  const feedback = $("#submit-feedback");
+  feedback.textContent = "Gardando na base local...";
+  try {
+    const response = await fetch("../api/coplas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ coplas: [payload] }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Non se puido gardar.");
+    feedback.textContent = `Gardado. IDs afectados: ${result.ids.join(", ")}`;
+    clearApiCache();
+    state.coplas = await getCoplas();
+  } catch (error) {
+    feedback.textContent = `${error.message} Podes engadir ao lote e exportar JSON como alternativa.`;
+  }
 }
 
 function downloadText(filename, text, type = "text/plain") {
@@ -609,7 +759,20 @@ async function init() {
     const first = searchTerritories(state.territorios, event.target.value)[0];
     if (first) selectTerritory(first, { switchMode: true });
   });
-  all(".mode-tab").forEach(tab => tab.addEventListener("click", () => setMode(tab.dataset.mode)));
+  $("#collapse-workbench").addEventListener("click", () => {
+    state.workbenchCollapsed = !state.workbenchCollapsed;
+    if (state.workbenchCollapsed) state.workbenchFocused = false;
+    syncWorkbenchChrome();
+  });
+  $("#focus-workbench").addEventListener("click", () => {
+    state.workbenchFocused = !state.workbenchFocused;
+    if (state.workbenchFocused) state.workbenchCollapsed = false;
+    syncWorkbenchChrome();
+  });
+  $(".mode-tabs").addEventListener("click", event => {
+    const tab = event.target.closest("[data-mode]");
+    if (tab) setMode(tab.dataset.mode);
+  });
 
   await loadLayer("con");
   const params = new URL(window.location.href).searchParams;
