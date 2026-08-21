@@ -6,6 +6,8 @@ from .db_paths import DB_PATH, SCHEMA_DIR
 
 MIGRATION_001 = "001_init.sql"
 MIGRATION_002 = "002_curation"
+MIGRATION_003 = "003_territory_state"
+MIGRATION_004 = "004_copla_versions"
 
 
 def connect(db_path: Path = DB_PATH) -> sqlite3.Connection:
@@ -334,6 +336,18 @@ def apply_002_curation(conn: sqlite3.Connection) -> None:
     conn.execute("PRAGMA foreign_keys = ON")
 
 
+def apply_003_territory_state(conn: sqlite3.Connection) -> None:
+    copla_columns = table_columns(conn, "coplas")
+    if "territory_state" not in copla_columns:
+        conn.execute(
+            "ALTER TABLE coplas ADD COLUMN territory_state TEXT NOT NULL DEFAULT 'assigned'"
+        )
+
+
+def apply_004_copla_versions(conn: sqlite3.Connection) -> None:
+    execute_sql_file(conn, SCHEMA_DIR / "004_copla_versions.sql")
+
+
 def migrate(db_path: Path = DB_PATH) -> list[str]:
     ensure_parent_dir(db_path)
 
@@ -351,6 +365,16 @@ def migrate(db_path: Path = DB_PATH) -> list[str]:
             apply_002_curation(conn)
             mark_migration(conn, MIGRATION_002)
             applied_now.append(MIGRATION_002)
+
+        if MIGRATION_003 not in applied:
+            apply_003_territory_state(conn)
+            mark_migration(conn, MIGRATION_003)
+            applied_now.append(MIGRATION_003)
+
+        if MIGRATION_004 not in applied:
+            apply_004_copla_versions(conn)
+            mark_migration(conn, MIGRATION_004)
+            applied_now.append(MIGRATION_004)
 
         conn.commit()
     finally:

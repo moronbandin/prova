@@ -1,500 +1,408 @@
-import { getTerritorios } from "./api.js";
-import { qs, nl2br, normalizeText } from "./utils.js";
-import { mountTopNav, mountBreadcrumb } from "./nav.js";
+import { getCoplas, getTerritorios } from "./api.js";
+import { nl2br, normalizeText, qs } from "./utils.js";
+import { mountBreadcrumb, mountTopNav } from "./nav.js";
 
 let knownTerritories = [];
-let knownTerritoryIds = new Set();
 let territoryMapById = new Map();
-let state = { coplas: [] };
+let existingCoplas = [];
+let batch = [];
 
 function emptyCopla() {
   return {
+    id: null,
     text: "",
     notes: "",
     tags: [],
-    territories: []
+    territories: [],
+    versions: [],
+    status: "published",
+    territory_state: "assigned",
   };
-}
-
-function cloneState(obj) {
-  return JSON.parse(JSON.stringify(obj));
 }
 
 function makeIncipit(text = "", maxWords = 6) {
   const words = String(text).trim().split(/\s+/).filter(Boolean);
-  if (!words.length) return "(sen texto)";
-  return words.slice(0, maxWords).join(" ");
+  return words.length ? words.slice(0, maxWords).join(" ") : "(sen texto)";
 }
 
-function getTerritoryLabelById(id) {
-  const terr = territoryMapById.get(id);
-  if (!terr) return id;
-  return terr.nome;
+function getFormState() {
+  const idValue = qs("#copla-id")?.value.trim();
+  const tags = (qs("#copla-tags")?.value || "")
+    .split(",")
+    .map(item => normalizeText(item))
+    .filter(Boolean);
+
+  const territories = Array.from(qs("#selected-territories")?.querySelectorAll("[data-territory-id]") || [])
+    .map(node => ({ id: node.dataset.territoryId }));
+  const versions = Array.from(qs("#version-list")?.querySelectorAll("[data-version-index]") || [])
+    .map(node => ({
+      label: node.dataset.versionLabel || "",
+      text: node.dataset.versionText || "",
+      notes: node.dataset.versionNotes || "",
+    }));
+
+  return {
+    id: idValue ? Number(idValue) : null,
+    text: qs("#copla-text")?.value || "",
+    notes: qs("#copla-notes")?.value || "",
+    status: qs("#copla-status")?.value || "published",
+    territory_state: qs("#copla-territory-state")?.value || "assigned",
+    tags,
+    territories,
+    versions,
+  };
 }
 
-function syncTextareaFromState() {
-  const input = qs("#json-input");
-  if (!input) return;
-  input.value = JSON.stringify(state, null, 2);
+function setFormState(copla) {
+  const next = { ...emptyCopla(), ...copla };
+  qs("#copla-id").value = next.id ?? "";
+  qs("#copla-text").value = next.text || "";
+  qs("#copla-notes").value = next.notes || "";
+  qs("#copla-status").value = next.status || "published";
+  qs("#copla-territory-state").value = next.territory_state || "assigned";
+  qs("#copla-tags").value = (next.tags || []).join(", ");
+  renderSelectedTerritories(next.territories || []);
+  renderVersions(next.versions || []);
+  updateFormMeta(next);
 }
 
-function updateEditorSummary() {
-  const el = qs("#editor-summary");
-  if (!el) return;
-  el.textContent = `${state.coplas.length} copla(s) no editor`;
+function updateFormMeta(copla = getFormState()) {
+  const meta = qs("#copla-form-meta");
+  if (!meta) return;
+
+  const mode = copla.id ? `Edición de #${copla.id}` : "Alta nova";
+  const territoryCount = (copla.territories || []).length;
+  meta.textContent = `${mode} · ${territoryCount} territorio(s) · ${copla.territory_state || "assigned"} · status ${copla.status || "published"}`;
 }
 
-function validatePayload(payload) {
-  const errors = [];
-  const warnings = [];
+function resetForm() {
+  setFormState(emptyCopla());
+}
 
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    errors.push("A raíz do JSON debe ser un obxecto.");
-    return { errors, warnings };
+function renderVersions(versions) {
+  const container = qs("#version-list");
+  const counter = qs("#version-count");
+  if (!container) return;
+
+  if (counter) {
+    counter.textContent = `${versions.length} versión${versions.length === 1 ? "" : "s"}`;
   }
 
-  if (!Array.isArray(payload.coplas)) {
-    errors.push("A clave 'coplas' debe existir e ser unha lista.");
-    return { errors, warnings };
-  }
-
-  payload.coplas.forEach((copla, index) => {
-    const n = index + 1;
-
-    if (!copla || typeof copla !== "object" || Array.isArray(copla)) {
-      errors.push(`Copla #${n}: debe ser un obxecto.`);
-      return;
-    }
-
-    if (typeof copla.text !== "string" || !copla.text.trim()) {
-      errors.push(`Copla #${n}: falta 'text' ou está baleiro.`);
-    }
-
-    if (!("notes" in copla) || typeof copla.notes !== "string") {
-      errors.push(`Copla #${n}: 'notes' debe existir e ser string.`);
-    }
-
-    if (!Array.isArray(copla.tags)) {
-      errors.push(`Copla #${n}: 'tags' debe ser unha lista.`);
-    } else {
-      copla.tags.forEach((tag, i) => {
-        if (typeof tag !== "string") {
-          errors.push(`Copla #${n}: etiqueta #${i + 1} non é string.`);
-        }
-      });
-    }
-
-    if (!Array.isArray(copla.territories)) {
-      errors.push(`Copla #${n}: 'territories' debe ser unha lista.`);
-    } else {
-      copla.territories.forEach((t, i) => {
-        if (!t || typeof t !== "object" || Array.isArray(t)) {
-          errors.push(`Copla #${n}: territorio #${i + 1} non é un obxecto.`);
-          return;
-        }
-
-        if (typeof t.id !== "string" || !t.id.trim()) {
-          errors.push(`Copla #${n}: territorio #${i + 1} non ten 'id' válido.`);
-          return;
-        }
-
-        if (!knownTerritoryIds.has(t.id)) {
-          warnings.push(`Copla #${n}: territorio descoñecido ou non cargado: ${t.id}`);
-        }
-      });
-    }
-  });
-
-  return { errors, warnings };
-}
-
-function renderValidation(errors, warnings, total = 0) {
-  const out = qs("#validation-output");
-  const summary = qs("#validation-summary");
-
-  if (!errors.length && !warnings.length) {
-    summary.textContent = `${total} copla(s) revisada(s) · sen erros nin avisos`;
-    out.innerHTML = `<p>JSON válido.</p>`;
+  container.innerHTML = "";
+  if (!versions.length) {
+    container.innerHTML = `<p class="muted">Sen variantes rexistradas. O texto principal funciona como versión canónica.</p>`;
     return;
   }
 
-  const parts = [];
-  if (errors.length) {
-    parts.push(`<h3>Erros</h3><ul>${errors.map(e => `<li>${e}</li>`).join("")}</ul>`);
-  }
-  if (warnings.length) {
-    parts.push(`<h3>Avisos</h3><ul>${warnings.map(w => `<li>${w}</li>`).join("")}</ul>`);
-  }
-
-  summary.textContent = `${total} copla(s) revisada(s) · ${errors.length} erro(s) · ${warnings.length} aviso(s)`;
-  out.innerHTML = parts.join("");
+  versions.forEach((version, index) => {
+    const node = document.createElement("button");
+    node.type = "button";
+    node.className = "linked-item linked-item-button";
+    node.dataset.versionIndex = String(index);
+    node.dataset.versionLabel = version.label || "";
+    node.dataset.versionText = version.text || "";
+    node.dataset.versionNotes = version.notes || "";
+    node.innerHTML = `
+      <span class="linked-item-title">${version.label || `Versión ${index + 1}`}</span>
+      <span class="linked-item-meta">${makeIncipit(version.text)} · preme para quitar</span>
+    `;
+    node.addEventListener("click", () => {
+      const current = getFormState();
+      current.versions = current.versions.filter((_item, itemIndex) => itemIndex !== index);
+      renderVersions(current.versions);
+      updateFormMeta(current);
+    });
+    container.appendChild(node);
+  });
 }
 
-function renderPreview(payload) {
-  const container = qs("#preview-output");
+function addVersionFromForm() {
+  const text = qs("#version-text")?.value || "";
+  if (!text.trim()) {
+    qs("#admin-feedback").textContent = "A versión precisa texto antes de engadila.";
+    return;
+  }
+  const current = getFormState();
+  current.versions.push({
+    label: qs("#version-label")?.value || "",
+    text,
+    notes: qs("#version-notes")?.value || "",
+  });
+  renderVersions(current.versions);
+  qs("#version-label").value = "";
+  qs("#version-text").value = "";
+  qs("#version-notes").value = "";
+  updateFormMeta(current);
+}
+
+function renderSelectedTerritories(territories) {
+  const container = qs("#selected-territories");
   container.innerHTML = "";
 
-  if (!payload?.coplas?.length) {
-    container.innerHTML = `<p class="muted">Sen vista previa.</p>`;
+  if (!territories.length) {
+    const territoryState = qs("#copla-territory-state")?.value || "assigned";
+    const message = territoryState === "general"
+      ? "Sen territorios: esta copla quedará como xeral."
+      : territoryState === "unassigned"
+        ? "Sen territorios: esta copla quedará como non adscrita / territorio descoñecido."
+        : "Esta copla precisa polo menos un territorio para quedar asignada.";
+    container.innerHTML = `<span class="muted">${message}</span>`;
     return;
   }
 
-  payload.coplas.forEach((copla, index) => {
-    const el = document.createElement("article");
-    el.className = "copla-card";
-
-    const tags = Array.isArray(copla.tags) && copla.tags.length
-      ? copla.tags.map(tag => `<span class="tag-pill">${tag}</span>`).join("")
-      : `<span class="muted">sen etiquetas</span>`;
-
-    const territories = Array.isArray(copla.territories) && copla.territories.length
-      ? copla.territories.map(t => {
-          const nome = getTerritoryLabelById(t.id);
-          return `<code title="${t.id}">${nome}</code>`;
-        }).join(" ")
-      : `<span class="muted">sen territorio</span>`;
-
-    el.innerHTML = `
-      <div class="copla-card-top">
-        <strong>${makeIncipit(copla.text || "")}</strong>
-      </div>
-      <div class="copla-text">${nl2br(copla.text || "")}</div>
-      <div class="meta-stack">
-        <div class="meta-row">
-          <strong>Territorios</strong>
-          <span>${territories}</span>
-        </div>
-        <div class="meta-row">
-          <strong>Etiquetas</strong>
-          <span class="tag-row">${tags}</span>
-        </div>
-        <div class="meta-row">
-          <strong>Notas</strong>
-          <span>${copla.notes || '<span class="muted">sen notas</span>'}</span>
-        </div>
-      </div>
+  for (const item of territories) {
+    const territory = territoryMapById.get(item.id);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "linked-item linked-item-inline";
+    button.dataset.territoryId = item.id;
+    button.innerHTML = `
+      <span class="linked-item-title">${territory?.nome || item.id}</span>
+      <span class="linked-item-meta">quitar</span>
     `;
-
-    container.appendChild(el);
-  });
-}
-
-function rerenderAll() {
-  syncTextareaFromState();
-  const { errors, warnings } = validatePayload(state);
-  renderValidation(errors, warnings, state.coplas.length);
-  renderEditor();
-  renderPreview(state);
-}
-
-function removeCopla(index) {
-  state.coplas.splice(index, 1);
-  rerenderAll();
-}
-
-function addTag(index, rawValue) {
-  const value = normalizeText(rawValue);
-  if (!value) return;
-  if (!state.coplas[index].tags.includes(value)) {
-    state.coplas[index].tags.push(value);
+    button.addEventListener("click", () => {
+      const current = getFormState();
+      current.territories = current.territories.filter(entry => entry.id !== item.id);
+      renderSelectedTerritories(current.territories);
+      updateFormMeta(current);
+    });
+    container.appendChild(button);
   }
-  rerenderAll();
 }
 
-function removeTag(index, tag) {
-  state.coplas[index].tags = state.coplas[index].tags.filter(t => t !== tag);
-  rerenderAll();
-}
-
-function addTerritory(index, territoryId) {
-  if (!territoryId) return;
-  const exists = state.coplas[index].territories.some(t => t.id === territoryId);
-  if (!exists) {
-    state.coplas[index].territories.push({ id: territoryId });
-  }
-  rerenderAll();
-}
-
-function removeTerritory(index, territoryId) {
-  state.coplas[index].territories = state.coplas[index].territories.filter(t => t.id !== territoryId);
-  rerenderAll();
-}
-
-function searchTerritories(term) {
+function renderTerritorySearch(term) {
+  const select = qs("#territory-select");
   const q = normalizeText(term);
-  if (!q) return [];
+  if (!q) {
+    select.innerHTML = `<option value="">Escribe algo para buscar...</option>`;
+    return;
+  }
 
-  return knownTerritories.filter(t => {
-    return (
-      normalizeText(t.nome || "").includes(q) ||
-      normalizeText(t.search || "").includes(q) ||
-      String(t.cod || "").includes(q) ||
-      normalizeText(t.id || "").includes(q)
-    );
-  }).slice(0, 12);
-}
+  const results = knownTerritories.filter(item =>
+    normalizeText(item.nome || "").includes(q) ||
+    normalizeText(item.search || "").includes(q) ||
+    normalizeText(item.id || "").includes(q) ||
+    String(item.cod || "").includes(q)
+  ).slice(0, 16);
 
-function renderTerritoryOptions(results) {
-  if (!results.length) return `<option value="">Sen resultados</option>`;
+  if (!results.length) {
+    select.innerHTML = `<option value="">Sen resultados</option>`;
+    return;
+  }
 
-  return `
+  select.innerHTML = `
     <option value="">Escoller territorio...</option>
-    ${results.map(t => `
-      <option value="${t.id}">
-        ${t.nome} [${t.tipo}] (${t.id})
-      </option>
-    `).join("")}
+    ${results.map(item => `<option value="${item.id}">${item.nome} [${item.tipo}] (${item.id})</option>`).join("")}
   `;
 }
 
-function renderEditor() {
-  const container = qs("#editor-output");
-  container.innerHTML = "";
-  updateEditorSummary();
+function addSelectedTerritory() {
+  const select = qs("#territory-select");
+  const territoryId = select?.value;
+  if (!territoryId) return;
 
-  if (!state.coplas.length) {
-    container.innerHTML = `<p class="muted">Non hai coplas cargadas no editor.</p>`;
+  const current = getFormState();
+  if (!current.territories.some(item => item.id === territoryId)) {
+    current.territories.push({ id: territoryId });
+  }
+  renderSelectedTerritories(current.territories);
+  updateFormMeta(current);
+}
+
+function upsertBatchCopla(copla) {
+  const normalized = {
+    id: Number.isInteger(copla.id) ? copla.id : null,
+    text: String(copla.text || "").trim(),
+    notes: String(copla.notes || ""),
+    status: copla.status || "published",
+    territory_state: copla.territory_state || "assigned",
+    tags: Array.isArray(copla.tags) ? copla.tags : [],
+    territories: Array.isArray(copla.territories) ? copla.territories : [],
+    versions: Array.isArray(copla.versions) ? copla.versions : [],
+  };
+
+  const existingIndex = batch.findIndex(item => {
+    if (normalized.id && item.id) return Number(item.id) === Number(normalized.id);
+    return item.text === normalized.text && normalized.text.length > 0;
+  });
+
+  if (existingIndex >= 0) {
+    batch[existingIndex] = normalized;
+  } else {
+    batch.unshift(normalized);
+  }
+}
+
+function renderBatch() {
+  const container = qs("#batch-list");
+  const summary = qs("#batch-summary");
+  const jsonOutput = qs("#batch-json-output");
+
+  summary.textContent = `${batch.length} copla(s) preparadas para importar ou actualizar`;
+  container.innerHTML = "";
+
+  if (!batch.length) {
+    container.innerHTML = `<p class="muted">O lote está baleiro. Engade unha copla desde o formulario ou carga o corpus actual para editalo.</p>`;
+    jsonOutput.textContent = '{\n  "coplas": []\n}';
     return;
   }
 
-  state.coplas.forEach((copla, index) => {
+  for (const item of batch) {
     const card = document.createElement("article");
-    card.className = "import-copla-card";
+    card.className = "copla-card";
 
-    const incipit = makeIncipit(copla.text || "");
-
-    const tagsHtml = copla.tags.length
-      ? copla.tags.map(tag => `
-          <button type="button" class="tag-pill tag-pill-removable" data-action="remove-tag" data-index="${index}" data-tag="${tag}">
-            ${tag} ×
-          </button>
-        `).join("")
-      : `<span class="muted">Sen etiquetas</span>`;
-
-    const territoriesHtml = copla.territories.length
-      ? copla.territories.map(t => {
-          const nome = getTerritoryLabelById(t.id);
-          return `
-            <button type="button" class="linked-item linked-item-inline" data-action="remove-territory" data-index="${index}" data-territory-id="${t.id}" title="${t.id}">
-              <span class="linked-item-title">${nome}</span>
-              <span class="linked-item-meta">quitar</span>
-            </button>
-          `;
-        }).join("")
-      : `<span class="muted">Sen territorios</span>`;
+    const territoryNames = (item.territories || []).length
+      ? item.territories.map(entry => territoryMapById.get(entry.id)?.nome || entry.id).join(", ")
+      : item.territory_state === "general"
+        ? "copla xeral"
+        : "non adscrita / territorio descoñecido";
 
     card.innerHTML = `
-      <details class="import-copla-details" ${index === 0 ? "open" : ""}>
-        <summary class="import-copla-summary">
-          <span class="import-copla-summary-title">${incipit}</span>
-          <span class="import-copla-summary-meta">
-            ${copla.tags.length} etiqueta(s) · ${copla.territories.length} territorio(s)
-          </span>
-        </summary>
-
-        <div class="import-copla-body">
-          <div class="section-head">
-            <h3 class="section-title">${incipit}</h3>
-            <button type="button" class="danger-btn" data-action="remove-copla" data-index="${index}">Eliminar copla</button>
-          </div>
-
-          <div class="import-form-grid">
-            <div>
-              <label class="toolbar-label">Texto</label>
-              <textarea class="import-copla-text" data-field="text" data-index="${index}">${copla.text || ""}</textarea>
-            </div>
-
-            <div>
-              <label class="toolbar-label">Notas</label>
-              <textarea class="import-copla-notes" data-field="notes" data-index="${index}">${copla.notes || ""}</textarea>
-            </div>
-          </div>
-
-          <div class="import-subblock">
-            <label class="toolbar-label">Etiquetas</label>
-            <div class="tag-row">${tagsHtml}</div>
-            <div class="inline-form">
-              <input type="text" placeholder="Nova etiqueta..." data-role="tag-input" data-index="${index}">
-              <div></div>
-              <button type="button" data-action="add-tag" data-index="${index}">Engadir etiqueta</button>
-            </div>
-          </div>
-
-          <div class="import-subblock">
-            <label class="toolbar-label">Territorios</label>
-            <div class="linked-block linked-block-inline">${territoriesHtml}</div>
-            <div class="inline-form">
-              <input type="text" placeholder="Buscar territorio por nome, código ou id..." data-role="territory-search" data-index="${index}">
-              <select data-role="territory-select" data-index="${index}">
-                <option value="">Escribe algo para buscar...</option>
-              </select>
-              <button type="button" data-action="add-territory" data-index="${index}">Engadir territorio</button>
-            </div>
-          </div>
-        </div>
-      </details>
+      <div class="copla-card-top">
+        <strong>${makeIncipit(item.text)}</strong>
+        <span class="copla-id">${item.id ? `#${item.id}` : "nova"}</span>
+      </div>
+      <div class="copla-text">${nl2br(item.text)}</div>
+      <div class="meta-stack">
+        <div class="meta-row"><strong>Status</strong><span>${item.status}</span></div>
+        <div class="meta-row"><strong>Tipo territorial</strong><span>${item.territory_state || "assigned"}</span></div>
+        <div class="meta-row"><strong>Territorios</strong><span>${territoryNames}</span></div>
+        <div class="meta-row"><strong>Etiquetas</strong><span>${(item.tags || []).join(", ") || "sen etiquetas"}</span></div>
+        <div class="meta-row"><strong>Versións</strong><span>${(item.versions || []).length}</span></div>
+      </div>
+      <div class="toolbar-actions">
+        <button type="button" data-action="edit" data-id="${item.id ?? ""}" data-text="${encodeURIComponent(item.text)}">Editar</button>
+        <button type="button" class="danger-btn" data-action="remove">Quitar do lote</button>
+      </div>
     `;
 
+    card.querySelector("[data-action='edit']")?.addEventListener("click", () => {
+      setFormState(item);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    card.querySelector("[data-action='remove']")?.addEventListener("click", () => {
+      batch = batch.filter(entry => entry !== item);
+      renderBatch();
+    });
+
     container.appendChild(card);
-  });
-
-  bindEditorEvents();
-}
-
-function bindEditorEvents() {
-  qs("#editor-output")?.querySelectorAll("[data-field='text']").forEach(el => {
-    el.addEventListener("input", (e) => {
-      const index = Number(e.target.dataset.index);
-      state.coplas[index].text = e.target.value;
-      syncTextareaFromState();
-      renderPreview(state);
-      const { errors, warnings } = validatePayload(state);
-      renderValidation(errors, warnings, state.coplas.length);
-
-      const details = e.target.closest(".import-copla-details");
-      const summaryTitle = details?.querySelector(".import-copla-summary-title");
-      const sectionTitle = details?.querySelector(".section-title");
-      const newIncipit = makeIncipit(e.target.value);
-
-      if (summaryTitle) summaryTitle.textContent = newIncipit;
-      if (sectionTitle) sectionTitle.textContent = newIncipit;
-    });
-  });
-
-  qs("#editor-output")?.querySelectorAll("[data-field='notes']").forEach(el => {
-    el.addEventListener("input", (e) => {
-      const index = Number(e.target.dataset.index);
-      state.coplas[index].notes = e.target.value;
-      syncTextareaFromState();
-      renderPreview(state);
-    });
-  });
-
-  qs("#editor-output")?.querySelectorAll("[data-action='remove-copla']").forEach(btn => {
-    btn.addEventListener("click", () => {
-      removeCopla(Number(btn.dataset.index));
-    });
-  });
-
-  qs("#editor-output")?.querySelectorAll("[data-action='add-tag']").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const index = Number(btn.dataset.index);
-      const input = qs(`[data-role='tag-input'][data-index='${index}']`, qs("#editor-output"));
-      addTag(index, input.value);
-      input.value = "";
-    });
-  });
-
-  qs("#editor-output")?.querySelectorAll("[data-action='remove-tag']").forEach(btn => {
-    btn.addEventListener("click", () => {
-      removeTag(Number(btn.dataset.index), btn.dataset.tag);
-    });
-  });
-
-  qs("#editor-output")?.querySelectorAll("[data-role='territory-search']").forEach(input => {
-    input.addEventListener("input", (e) => {
-      const index = Number(e.target.dataset.index);
-      const select = qs(`[data-role='territory-select'][data-index='${index}']`, qs("#editor-output"));
-      const results = searchTerritories(e.target.value);
-      select.innerHTML = renderTerritoryOptions(results);
-    });
-  });
-
-  qs("#editor-output")?.querySelectorAll("[data-action='add-territory']").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const index = Number(btn.dataset.index);
-      const select = qs(`[data-role='territory-select'][data-index='${index}']`, qs("#editor-output"));
-      addTerritory(index, select.value);
-    });
-  });
-
-  qs("#editor-output")?.querySelectorAll("[data-action='remove-territory']").forEach(btn => {
-    btn.addEventListener("click", () => {
-      removeTerritory(Number(btn.dataset.index), btn.dataset.territoryId);
-    });
-  });
-}
-
-function loadPayloadFromTextarea() {
-  const input = qs("#json-input");
-  const payload = JSON.parse(input.value);
-
-  if (!payload || typeof payload !== "object" || !Array.isArray(payload.coplas)) {
-    throw new Error("A raíz debe conter unha lista 'coplas'.");
   }
 
-  state = cloneState(payload);
-  state.coplas = state.coplas.map(c => ({
-    text: typeof c.text === "string" ? c.text : "",
-    notes: typeof c.notes === "string" ? c.notes : "",
-    tags: Array.isArray(c.tags) ? c.tags.filter(x => typeof x === "string") : [],
-    territories: Array.isArray(c.territories)
-      ? c.territories.filter(t => t && typeof t.id === "string").map(t => ({ id: t.id }))
-      : []
-  }));
+  jsonOutput.textContent = `${JSON.stringify({ coplas: batch }, null, 2)}\n`;
+}
 
-  rerenderAll();
+function populateExistingSelector() {
+  const select = qs("#existing-coplas");
+  select.innerHTML = `<option value="">Escoller copla publicada...</option>`;
+
+  for (const copla of existingCoplas) {
+    const option = document.createElement("option");
+    option.value = String(copla.id);
+    option.textContent = `#${copla.id} · ${makeIncipit(copla.text)}`;
+    select.appendChild(option);
+  }
+}
+
+function downloadBatchJson() {
+  const blob = new Blob([`${JSON.stringify({ coplas: batch }, null, 2)}\n`], {
+    type: "application/json",
+  });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "coplas-lote.json";
+  link.click();
+  URL.revokeObjectURL(link.href);
 }
 
 async function init() {
-  mountTopNav("coplas");
+  mountTopNav("admin");
   mountBreadcrumb([
     { href: "../index.html", label: "Inicio" },
-    { href: "./coplas.html", label: "Coplas" },
-    { label: "Importar" }
+    { label: "Admin local" },
   ]);
 
-  try {
-    const territorios = await getTerritorios();
-    knownTerritories = territorios;
-    knownTerritoryIds = new Set(territorios.map(t => t.id));
-    territoryMapById = new Map(territorios.map(t => [t.id, t]));
-  } catch {
-    knownTerritories = [];
-    knownTerritoryIds = new Set();
-    territoryMapById = new Map();
-  }
+  [knownTerritories, existingCoplas] = await Promise.all([getTerritorios(), getCoplas()]);
+  territoryMapById = new Map(knownTerritories.map(item => [item.id, item]));
+  populateExistingSelector();
+  resetForm();
+  renderBatch();
 
-  const input = qs("#json-input");
-  const validateBtn = qs("#validate-btn");
-  const formatBtn = qs("#format-btn");
-  const clearBtn = qs("#clear-btn");
-  const addEmptyBtn = qs("#add-empty-copla-btn");
+  qs("#territory-search")?.addEventListener("input", event => {
+    renderTerritorySearch(event.target.value);
+  });
 
-  validateBtn?.addEventListener("click", () => {
-    try {
-      loadPayloadFromTextarea();
-    } catch (err) {
-      renderValidation([`JSON inválido: ${err.message}`], [], 0);
-      qs("#editor-output").innerHTML = "";
-      renderPreview(null);
+  qs("#territory-add-btn")?.addEventListener("click", addSelectedTerritory);
+  qs("#version-add-btn")?.addEventListener("click", addVersionFromForm);
+
+  qs("#copla-text")?.addEventListener("input", () => updateFormMeta());
+  qs("#copla-status")?.addEventListener("change", () => updateFormMeta());
+  qs("#copla-territory-state")?.addEventListener("change", () => {
+    renderSelectedTerritories(getFormState().territories);
+    updateFormMeta();
+  });
+
+  qs("#copla-reset-btn")?.addEventListener("click", resetForm);
+
+  qs("#copla-add-btn")?.addEventListener("click", () => {
+    const current = getFormState();
+    if (!current.text.trim()) {
+      qs("#admin-feedback").textContent = "Cómpre engadir texto antes de meter a copla no lote.";
+      return;
+    }
+    if (current.territory_state === "assigned" && !current.territories.length) {
+      qs("#admin-feedback").textContent = "Se a copla está asignada, cómpre indicar polo menos un territorio.";
+      return;
+    }
+    if (current.territory_state !== "assigned" && current.territories.length) {
+      qs("#admin-feedback").textContent = "As coplas xerais ou non adscritas deben ir sen territorios ligados.";
+      return;
+    }
+    upsertBatchCopla(current);
+    renderBatch();
+    qs("#admin-feedback").textContent = current.id
+      ? `Copla #${current.id} preparada para actualizar no lote.`
+      : "Copla nova engadida ao lote.";
+    resetForm();
+  });
+
+  qs("#existing-coplas")?.addEventListener("change", event => {
+    const id = Number(event.target.value);
+    const copla = existingCoplas.find(item => Number(item.id) === id);
+    if (copla) {
+      setFormState({
+        id: copla.id,
+        text: copla.text,
+        notes: copla.notes || "",
+        status: copla.status || "published",
+        territory_state: copla.territory_state || "assigned",
+        tags: copla.tags || [],
+        territories: copla.territories?.map(item => ({ id: item.id })) || [],
+        versions: copla.versions || [],
+      });
+      qs("#admin-feedback").textContent = `Copla #${copla.id} cargada no formulario para edición.`;
     }
   });
 
-  formatBtn?.addEventListener("click", () => {
-    try {
-      const payload = JSON.parse(input.value);
-      input.value = JSON.stringify(payload, null, 2);
-    } catch (err) {
-      renderValidation([`JSON inválido: ${err.message}`], [], 0);
-    }
+  qs("#load-current-batch-btn")?.addEventListener("click", () => {
+    batch = existingCoplas.map(item => ({
+      id: item.id,
+      text: item.text,
+      notes: item.notes || "",
+      status: item.status || "published",
+      territory_state: item.territory_state || "assigned",
+      tags: item.tags || [],
+      territories: item.territories?.map(entry => ({ id: entry.id })) || [],
+      versions: item.versions || [],
+    }));
+    renderBatch();
+    qs("#admin-feedback").textContent = "Corpus actual cargado no lote para revisión local.";
   });
 
-  clearBtn?.addEventListener("click", () => {
-    input.value = "";
-    state = { coplas: [] };
-    qs("#validation-summary").textContent = "";
-    qs("#validation-output").innerHTML = "";
-    qs("#preview-output").innerHTML = "";
-    qs("#editor-output").innerHTML = "";
-    qs("#editor-summary").textContent = "";
-  });
-
-  addEmptyBtn?.addEventListener("click", () => {
-    if (!Array.isArray(state.coplas)) state.coplas = [];
-    state.coplas.push(emptyCopla());
-    rerenderAll();
-  });
+  qs("#download-batch-btn")?.addEventListener("click", downloadBatchJson);
 }
 
-init();
+init().catch(err => {
+  const feedback = qs("#admin-feedback");
+  if (feedback) feedback.textContent = err.message;
+});

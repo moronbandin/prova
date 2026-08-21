@@ -43,6 +43,30 @@ function renderNotes(item) {
   el.innerHTML = `<p>${item.notes}</p>`;
 }
 
+function renderVersions(item) {
+  const container = qs("#versions");
+  const counter = qs("#versions-count");
+  const versions = item.versions || [];
+  if (!container) return;
+
+  if (counter) {
+    counter.textContent = `${versions.length} versión${versions.length === 1 ? "" : "s"}`;
+  }
+
+  if (!versions.length) {
+    container.innerHTML = `<p class="muted">Sen variantes rexistradas. O texto principal funciona como versión canónica.</p>`;
+    return;
+  }
+
+  container.innerHTML = versions.map(version => `
+    <article class="linked-item">
+      <span class="linked-item-title">${version.label || version.incipit || "Versión"}</span>
+      <div class="copla-text">${nl2br(version.text)}</div>
+      ${version.notes ? `<span class="linked-item-meta">${version.notes}</span>` : ""}
+    </article>
+  `).join("");
+}
+
 function renderCopla(item) {
   qs("#title").textContent = item.incipit || `Copla ${item.id}`;
   qs("#subtitle").textContent = item.incipit ? "Ficha individual da copla" : "Rexistro individual";
@@ -50,6 +74,7 @@ function renderCopla(item) {
   qs("#text").innerHTML = nl2br(item.text);
 
   renderTerritories(item);
+  renderVersions(item);
   renderTags(item);
   renderNotes(item);
 }

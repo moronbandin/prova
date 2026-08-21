@@ -39,10 +39,17 @@
     </section>
 
     <section class="card">
+      <h2 class="section-title">Atallos</h2>
+      <div id="territory-actions" class="panel-actions"></div>
+    </section>
+
+    <section class="card">
       <div class="section-head">
         <h2 class="section-title">Coplas relacionadas</h2>
         <p id="copla-count" class="muted"></p>
       </div>
+      <label class="toolbar-label" for="copla-filter">Filtrar nesta selección</label>
+      <input id="copla-filter" type="search" placeholder="Buscar texto, etiqueta ou territorio dentro deste territorio">
       <ul id="copla-list" class="list"></ul>
     </section>
 
@@ -71,6 +78,9 @@
 
           <div class="toolbar-actions">
             <button id="piece-download-btn" type="button">Descargar JSON</button>
+            <button id="piece-print-btn" type="button">Abrir folla A4 / PDF</button>
+            <button id="piece-html-btn" type="button">Descargar folla HTML</button>
+            <button id="piece-add-section-btn" type="button">Engadir parte</button>
             <button id="piece-clear-btn" type="button">Limpar peza</button>
           </div>
 

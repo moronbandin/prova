@@ -3,27 +3,28 @@
 ========================================================= */
 
 :root {
-  --bg: #f6f3ee;
-  --bg-soft: #fbfaf7;
-  --surface: rgba(255, 255, 255, 0.78);
+  --bg: #eef1ef;
+  --bg-soft: #f7f8f6;
+  --surface: rgba(255, 255, 255, 0.92);
   --surface-strong: #ffffff;
-  --surface-muted: #f2ede4;
+  --surface-muted: #edf1ef;
 
-  --text: #1f1c17;
-  --text-soft: #5f574b;
+  --text: #1d2326;
+  --text-soft: #5b666b;
 
-  --border: rgba(72, 58, 37, 0.14);
-  --border-strong: rgba(72, 58, 37, 0.24);
+  --border: rgba(29, 35, 38, 0.1);
+  --border-strong: rgba(29, 35, 38, 0.18);
 
-  --accent: #2d6a4f;
-  --accent-soft: #dcefe6;
+  --accent: #0e6b77;
+  --accent-soft: #d6eef0;
+  --accent-strong: #094951;
 
-  --shadow: 0 10px 30px rgba(52, 40, 22, 0.08);
-  --shadow-soft: 0 6px 18px rgba(52, 40, 22, 0.05);
+  --shadow: 0 18px 44px rgba(30, 44, 51, 0.12);
+  --shadow-soft: 0 8px 20px rgba(30, 44, 51, 0.08);
 
-  --radius: 18px;
+  --radius: 22px;
   --radius-sm: 12px;
-  --max-width: 1080px;
+  --max-width: 1180px;
 }
 
 /* =========================================================
@@ -41,13 +42,13 @@ html {
 body {
   margin: 0;
   padding-top: 74px;
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
   line-height: 1.55;
   color: var(--text);
   background:
-    radial-gradient(circle at top left, rgba(45, 106, 79, 0.06), transparent 28%),
-    radial-gradient(circle at top right, rgba(188, 146, 74, 0.08), transparent 24%),
-    var(--bg);
+    radial-gradient(circle at top left, rgba(14, 107, 119, 0.08), transparent 22%),
+    radial-gradient(circle at top right, rgba(155, 176, 179, 0.14), transparent 28%),
+    linear-gradient(180deg, #f1f3f1 0%, #e8ece9 100%);
 }
 
 img {
@@ -73,7 +74,7 @@ h2,
 h3 {
   margin: 0 0 0.75rem;
   line-height: 1.15;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 h1 {
@@ -121,8 +122,8 @@ input[type="text"]:focus,
 select:focus,
 textarea:focus {
   background: #fff;
-  border-color: rgba(45, 106, 79, 0.5);
-  box-shadow: 0 0 0 4px rgba(45, 106, 79, 0.08);
+  border-color: rgba(14, 107, 119, 0.45);
+  box-shadow: 0 0 0 4px rgba(14, 107, 119, 0.08);
 }
 
 .import-textarea {
@@ -228,7 +229,7 @@ textarea:focus {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
 }
 
 .card-link {
@@ -306,9 +307,9 @@ textarea:focus {
   left: 0;
   z-index: 1000;
   width: 100%;
-  background: rgba(246, 243, 238, 0.86);
-  border-bottom: 1px solid var(--border);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.82);
+  border-bottom: 1px solid rgba(29, 35, 38, 0.08);
+  backdrop-filter: blur(18px);
 }
 
 .topnav-inner {
@@ -320,8 +321,9 @@ textarea:focus {
 }
 
 .topnav-brand {
+  font-size: 1.02rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.01em;
   color: var(--text);
 }
 
@@ -341,13 +343,13 @@ textarea:focus {
 
 .topnav-link:hover {
   color: var(--text);
-  background: var(--surface-muted);
+  background: rgba(14, 107, 119, 0.08);
 }
 
 .topnav-link.is-active {
   font-weight: 700;
-  color: var(--accent);
-  background: var(--accent-soft);
+  color: var(--accent-strong);
+  background: rgba(14, 107, 119, 0.12);
 }
 
 /* =========================================================
@@ -896,11 +898,322 @@ textarea:focus {
   margin-top: 0.25rem;
 }
 
+.piece-section {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  background: rgba(247, 248, 246, 0.9);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.piece-section-head {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) auto;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.piece-section .linked-item {
+  background: var(--surface-strong);
+}
+
+@media print {
+  .topnav,
+  .site-header,
+  .toolbar-actions,
+  .breadcrumbs {
+    display: none !important;
+  }
+
+  body {
+    padding-top: 0;
+    background: #fff;
+  }
+
+  .card {
+    box-shadow: none;
+    border-color: #ddd;
+  }
+}
+
 /* =========================================================
-   19. IMPORT EDITOR RESPONSIVE
+   19. MAP-FIRST EXPLORER
+========================================================= */
+
+.map-first-site .site-header,
+.map-first-site .page-wrap,
+.map-first-site .home-main {
+  max-width: none;
+}
+
+.explorer-canvas {
+  position: relative;
+  min-height: calc(100vh - 74px);
+  background: #dfe7e1;
+}
+
+.explorer-canvas-full {
+  min-height: calc(100vh - 74px);
+}
+
+.explorer-overlay {
+  position: absolute;
+  z-index: 500;
+}
+
+.explorer-left-column {
+  top: 16px;
+  left: 16px;
+  display: grid;
+  gap: 0.9rem;
+  width: min(430px, calc(100vw - 32px));
+  max-height: calc(100vh - 128px);
+}
+
+.explorer-left-column-wide {
+  width: min(520px, calc(100vw - 36px));
+}
+
+.explorer-search-shell {
+  padding: 0.95rem;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(29, 35, 38, 0.08);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(12px);
+}
+
+.explorer-search-shell-wide {
+  width: 100%;
+}
+
+.explorer-search-controls,
+.map-panel-section {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.explorer-inspector {
+  width: 100%;
+  max-height: min(58vh, 720px);
+  overflow: auto;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(29, 35, 38, 0.08);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(12px);
+}
+
+.explorer-inspector-wide {
+  width: 100%;
+}
+
+.explorer-quick-actions {
+  right: 18px;
+  bottom: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 0.6rem;
+  max-width: min(480px, calc(100vw - 36px));
+}
+
+.explorer-map {
+  width: 100%;
+  min-height: 560px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+
+.explorer-map-home {
+  min-height: calc(100vh - 74px);
+}
+
+.explorer-map-full {
+  min-height: calc(100vh - 74px);
+}
+
+.explorer-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.explorer-stat {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.85rem 0.95rem;
+  background: rgba(246, 248, 246, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.explorer-stat strong {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.explorer-stat span {
+  font-size: 0.9rem;
+  color: var(--text-soft);
+}
+
+.explorer-results {
+  display: grid;
+  gap: 0.55rem;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.explorer-result {
+  display: grid;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.8rem 0.9rem;
+  text-align: left;
+  cursor: pointer;
+  background: #fffdf8;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.explorer-result span {
+  font-size: 0.9rem;
+  color: var(--text-soft);
+}
+
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.panel-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.7rem 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  background: #fffdf8;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.panel-action-ghost {
+  color: var(--accent-strong);
+  background: rgba(14, 107, 119, 0.08);
+  border-color: rgba(14, 107, 119, 0.15);
+}
+
+.explorer-result:hover,
+.panel-action:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-soft);
+}
+
+.compact-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.compact-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.9rem;
+  color: var(--text);
+  background: rgba(26, 108, 120, 0.08);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.compact-chip:hover {
+  color: var(--accent-strong);
+}
+
+.linked-item-button {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.territory-context-card {
+  margin-bottom: 1rem;
+}
+
+.map-layer-status {
+  margin: -0.25rem 0 0;
+  font-size: 0.86rem;
+  color: var(--text-soft);
+}
+
+.map-layer-status[data-state="ready"] {
+  color: var(--accent-strong);
+}
+
+.map-layer-status[data-state="error"] {
+  color: #9a3412;
+}
+
+.text-action {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--accent-strong);
+}
+
+.text-action:hover {
+  color: var(--accent);
+}
+
+.atlas-copla-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.atlas-copla {
+  padding: 0.8rem;
+  background: rgba(247, 248, 246, 0.94);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.atlas-copla a:hover {
+  color: var(--accent);
+}
+
+.atlas-copla-text {
+  display: -webkit-box;
+  margin: 0.45rem 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1.55;
+  white-space: pre-line;
+}
+
+.atlas-copla-meta {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--text-soft);
+}
+
+/* =========================================================
+   20. IMPORT EDITOR RESPONSIVE
 ========================================================= */
 
 @media (max-width: 900px) {
+  .explorer-map-home,
+  .explorer-map-full {
+    min-height: calc(100vh - 74px);
+  }
+
   .import-form-grid {
     grid-template-columns: 1fr;
   }
@@ -915,7 +1228,7 @@ textarea:focus {
 }
 
 /* =========================================================
-   18. IMPORT COLLAPSIBLES
+   21. IMPORT COLLAPSIBLES
 ========================================================= */
 
 .import-copla-details {
@@ -956,6 +1269,40 @@ textarea:focus {
 }
 
 @media (max-width: 720px) {
+  .explorer-left-column {
+    left: 10px;
+    width: calc(100vw - 20px);
+    max-height: calc(100vh - 214px);
+  }
+
+  .explorer-search-shell,
+  .explorer-inspector {
+    border-radius: 8px;
+  }
+
+  .explorer-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .explorer-inspector {
+    max-height: 44vh;
+  }
+
+  .explorer-quick-actions {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    flex-wrap: nowrap;
+    justify-content: start;
+    max-width: none;
+    overflow-x: auto;
+    padding-bottom: 0.15rem;
+  }
+
+  .explorer-quick-actions .panel-action {
+    flex: 0 0 auto;
+  }
+
   .import-copla-summary {
     flex-direction: column;
     align-items: start;

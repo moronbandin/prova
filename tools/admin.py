@@ -67,9 +67,9 @@ def command_import_coplas(args) -> int:
     finally:
         conn.close()
 
-    print(f"Coplas importadas: {len(imported_ids)}")
+    print(f"Coplas procesadas: {len(imported_ids)}")
     if imported_ids:
-        print("IDs creados:", ", ".join(str(value) for value in imported_ids))
+        print("IDs afectados:", ", ".join(str(value) for value in imported_ids))
     return 0
 
 

@@ -43,10 +43,18 @@ def validate_coplas_payload(payload, known_territories: set[str]) -> list[str]:
     if not isinstance(payload, dict) or not isinstance(payload.get("coplas"), list):
         return ["O JSON debe ser un obxecto con clave 'coplas' en forma de lista."]
 
+    known_copla_ids = payload.get("_known_copla_ids", set())
+
     for index, copla in enumerate(payload["coplas"], start=1):
         if not isinstance(copla, dict):
             errors.append(f"Copla #{index}: debe ser un obxecto.")
             continue
+        copla_id = copla.get("id")
+        if copla_id is not None:
+            if not isinstance(copla_id, int):
+                errors.append(f"Copla #{index}: 'id' debe ser enteiro cando existe.")
+            elif known_copla_ids and copla_id not in known_copla_ids:
+                errors.append(f"Copla #{index}: non existe unha copla co id {copla_id}.")
         text = copla.get("text")
         if not isinstance(text, str) or not text.strip():
             errors.append(f"Copla #{index}: falta 'text' ou está baleiro.")
@@ -56,9 +64,34 @@ def validate_coplas_payload(payload, known_territories: set[str]) -> list[str]:
         status = copla.get("status", "published")
         if status not in {"draft", "published"}:
             errors.append(f"Copla #{index}: 'status' debe ser 'draft' ou 'published'.")
+        territory_state = copla.get("territory_state", "assigned")
+        if territory_state not in {"assigned", "unassigned", "general"}:
+            errors.append(
+                f"Copla #{index}: 'territory_state' debe ser 'assigned', 'unassigned' ou 'general'."
+            )
         tags = copla.get("tags", [])
         if not isinstance(tags, list):
             errors.append(f"Copla #{index}: 'tags' debe ser unha lista.")
+        versions = copla.get("versions", [])
+        if not isinstance(versions, list):
+            errors.append(f"Copla #{index}: 'versions' debe ser unha lista.")
+        else:
+            for version_index, version in enumerate(versions, start=1):
+                if not isinstance(version, dict):
+                    errors.append(
+                        f"Copla #{index}, versión #{version_index}: debe ser un obxecto."
+                    )
+                    continue
+                version_text = version.get("text")
+                if not isinstance(version_text, str) or not version_text.strip():
+                    errors.append(
+                        f"Copla #{index}, versión #{version_index}: falta 'text' ou está baleiro."
+                    )
+                version_notes = version.get("notes", "")
+                if version_notes is not None and not isinstance(version_notes, str):
+                    errors.append(
+                        f"Copla #{index}, versión #{version_index}: 'notes' debe ser string."
+                    )
         territories = copla.get("territories", [])
         if not isinstance(territories, list):
             errors.append(f"Copla #{index}: 'territories' debe ser unha lista.")
@@ -71,11 +104,22 @@ def validate_coplas_payload(payload, known_territories: set[str]) -> list[str]:
                     errors.append(
                         f"Copla #{index}: territorio descoñecido: {territory['id']}"
                     )
+        if territory_state == "assigned" and not territories:
+            errors.append(
+                f"Copla #{index}: se 'territory_state' é 'assigned', cómpre indicar algún territorio."
+            )
+        if territory_state != "assigned" and territories:
+            errors.append(
+                f"Copla #{index}: se 'territory_state' non é 'assigned', a lista de territorios debe ir baleira."
+            )
     return errors
 
 
 def import_coplas(conn: sqlite3.Connection, payload) -> list[int]:
     known_territories = load_known_territories(conn)
+    known_copla_ids = load_known_coplas(conn)
+    payload = dict(payload)
+    payload["_known_copla_ids"] = known_copla_ids
     errors = validate_coplas_payload(payload, known_territories)
     if errors:
         raise ValueError("\n".join(errors))
@@ -87,23 +131,73 @@ def import_coplas(conn: sqlite3.Connection, payload) -> list[int]:
         incipit = make_incipit(text)
         notes = copla.get("notes") or None
         status = copla.get("status", "published")
+        territory_state = copla.get("territory_state", "assigned")
+        copla_id = copla.get("id")
 
-        cur = conn.execute(
-            """
-            INSERT INTO coplas (
-              text,
-              normalized_text,
-              incipit,
-              notes,
-              status,
-              updated_at
+        if isinstance(copla_id, int):
+            conn.execute(
+                """
+                UPDATE coplas
+                SET
+                  text = ?,
+                  normalized_text = ?,
+                  incipit = ?,
+                  notes = ?,
+                  status = ?,
+                  territory_state = ?,
+                  updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (text, normalized, incipit, notes, status, territory_state, copla_id),
             )
-            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-            """,
-            (text, normalized, incipit, notes, status),
-        )
-        copla_id = cur.lastrowid
+            conn.execute("DELETE FROM copla_territories WHERE copla_id = ?", (copla_id,))
+            conn.execute("DELETE FROM copla_tags WHERE copla_id = ?", (copla_id,))
+        else:
+            cur = conn.execute(
+                """
+                INSERT INTO coplas (
+                  text,
+                  normalized_text,
+                  incipit,
+                  notes,
+                  status,
+                  territory_state,
+                  updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                """,
+                (text, normalized, incipit, notes, status, territory_state),
+            )
+            copla_id = cur.lastrowid
         imported_ids.append(copla_id)
+
+        conn.execute("DELETE FROM copla_versions WHERE copla_id = ?", (copla_id,))
+        for position, version in enumerate(copla.get("versions", []), start=1):
+            version_text = version["text"].strip()
+            conn.execute(
+                """
+                INSERT INTO copla_versions (
+                  copla_id,
+                  label,
+                  text,
+                  normalized_text,
+                  incipit,
+                  notes,
+                  position,
+                  updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                """,
+                (
+                    copla_id,
+                    version.get("label") or None,
+                    version_text,
+                    normalize_text(version_text),
+                    make_incipit(version_text),
+                    version.get("notes") or None,
+                    position,
+                ),
+            )
 
         for territory in copla.get("territories", []):
             conn.execute(

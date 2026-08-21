@@ -14,6 +14,7 @@ function makeHref(target) {
     coplas: insidePages ? "./coplas.html" : "./pages/coplas.html",
     pezas: insidePages ? "./pezas.html" : "./pages/pezas.html",
     media: insidePages ? "./media.html" : "./pages/media.html",
+    admin: insidePages ? "./importar.html" : "./pages/importar.html",
   };
 
   return map[target] || target;
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { hrefKey: "coplas", label: "Coplas", key: "coplas" },
   { hrefKey: "pezas", label: "Pezas", key: "pezas" },
   { hrefKey: "media", label: "Media", key: "media" },
+  { hrefKey: "admin", label: "Admin local", key: "admin" },
 ];
 
 function buildNav(current = "") {

@@ -23,6 +23,32 @@ def run_checks(conn: sqlite3.Connection) -> list[str]:
     copla_ids = {row["id"] for row in conn.execute("SELECT id FROM coplas").fetchall()}
     piece_ids = {row["id"] for row in conn.execute("SELECT id FROM pieces").fetchall()}
 
+    copla_state_rows = conn.execute(
+        "SELECT id, territory_state FROM coplas"
+    ).fetchall()
+    for row in copla_state_rows:
+        if row["territory_state"] not in {"assigned", "unassigned", "general"}:
+            issues.append(
+                f"Copla {row['id']} usa territory_state non soportado: {row['territory_state']}"
+            )
+
+    mismatched_states = conn.execute(
+        """
+        SELECT
+          c.id,
+          c.territory_state,
+          COUNT(ct.territory_id) AS territory_count
+        FROM coplas c
+        LEFT JOIN copla_territories ct ON ct.copla_id = c.id
+        GROUP BY c.id, c.territory_state
+        """
+    ).fetchall()
+    for row in mismatched_states:
+        if row["territory_state"] == "assigned" and row["territory_count"] == 0:
+            issues.append(f"Copla {row['id']} está como assigned pero non ten territorios.")
+        if row["territory_state"] in {"unassigned", "general"} and row["territory_count"] > 0:
+            issues.append(f"Copla {row['id']} está como {row['territory_state']} pero conserva territorios.")
+
     missing_copla_territories = conn.execute(
         """
         SELECT ct.copla_id, ct.territory_id

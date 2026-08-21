@@ -51,6 +51,7 @@ def export_coplas(conn: sqlite3.Connection) -> list[dict]:
           c.incipit,
           c.notes,
           c.status,
+          c.territory_state,
           c.created_at,
           c.updated_at
         FROM coplas c
@@ -80,6 +81,15 @@ def export_coplas(conn: sqlite3.Connection) -> list[dict]:
             """,
             (copla["id"],),
         ).fetchall()
+        versions = conn.execute(
+            """
+            SELECT id, label, text, normalized_text, incipit, notes, position, created_at, updated_at
+            FROM copla_versions
+            WHERE copla_id = ?
+            ORDER BY position ASC, id ASC
+            """,
+            (copla["id"],),
+        ).fetchall()
 
         result.append(
             {
@@ -89,10 +99,12 @@ def export_coplas(conn: sqlite3.Connection) -> list[dict]:
                 "incipit": copla["incipit"],
                 "notes": copla["notes"],
                 "status": copla["status"],
+                "territory_state": copla["territory_state"],
                 "created_at": copla["created_at"],
                 "updated_at": copla["updated_at"],
                 "territories": [dict(item) for item in territories],
                 "tags": [item["name"] for item in tags],
+                "versions": [dict(item) for item in versions],
             }
         )
 
