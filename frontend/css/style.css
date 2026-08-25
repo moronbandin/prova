@@ -657,6 +657,10 @@ label textarea {
   grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
 }
 
+.territory-copla-grid {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
 .gallery-card {
   display: flex;
   flex-direction: column;
@@ -678,6 +682,17 @@ label textarea {
 
 .gallery-card[role="button"] {
   cursor: pointer;
+}
+
+.territory-copla-grid .gallery-card {
+  min-height: 260px;
+}
+
+.territory-copla-grid .gallery-text {
+  font-size: clamp(13px, 1.3vw, 15px);
+  line-height: 1.34;
+  overflow-wrap: normal;
+  text-wrap: balance;
 }
 
 .gallery-card.as-list {
@@ -932,6 +947,18 @@ label textarea {
   margin-top: 20px;
 }
 
+.export-status {
+  min-height: 20px;
+  margin-top: -8px;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.export-status.is-error {
+  color: #9a3f34;
+}
+
 .piece-grid,
 .media-grid {
   display: grid;
@@ -1171,6 +1198,65 @@ label {
 .sequence-list.drop-target {
   outline: 2px solid #c5d7cc;
   outline-offset: 3px;
+}
+
+.pdf-viewer[hidden] {
+  display: none;
+}
+
+.pdf-viewer {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+}
+
+.pdf-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(18, 22, 19, 0.38);
+  backdrop-filter: blur(12px);
+}
+
+.pdf-panel {
+  position: absolute;
+  inset: 28px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  background: #fbfcfa;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 14px;
+  box-shadow: 0 30px 90px rgba(28, 33, 29, 0.28);
+}
+
+.pdf-head,
+.pdf-actions {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  background: rgba(251, 252, 250, 0.9);
+  border-bottom: 1px solid var(--line);
+}
+
+.pdf-head h2 {
+  margin: 2px 0 0;
+  font-size: 18px;
+  font-weight: 560;
+}
+
+.pdf-frame {
+  width: 100%;
+  height: 100%;
+  background: #e7e9e3;
+  border: 0;
+}
+
+.pdf-actions {
+  justify-content: flex-end;
+  border-top: 1px solid var(--line);
+  border-bottom: 0;
 }
 
 .drag {
@@ -1496,6 +1582,17 @@ label {
     top: 76px;
   }
 
+  .pdf-panel {
+    inset: 10px;
+    border-radius: 12px;
+  }
+
+  .pdf-head,
+  .pdf-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .formgrid {
     grid-template-columns: 1fr;
   }
@@ -1526,6 +1623,7 @@ label {
 
   .copla-gallery,
   .copla-gallery.gallery-wide,
+  .territory-copla-grid,
   .territory-results {
     grid-template-columns: 1fr;
   }

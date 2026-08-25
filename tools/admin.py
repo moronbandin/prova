@@ -10,7 +10,7 @@ if str(ROOT) not in sys.path:
 
 from backend.services.checks import run_checks
 from backend.services.db import connect, ensure_parent_dir, migrate
-from backend.services.db_paths import DB_PATH, TERRITORIOS_JSON
+from backend.services.db_paths import DB_PATH, EXPORTS_DIR, TERRITORIOS_JSON
 from backend.services.exporters import export_coplas, export_web
 from backend.services.importers import (
     import_coplas,
@@ -19,6 +19,7 @@ from backend.services.importers import (
     import_territories,
     load_json,
 )
+from backend.services.pdf import PdfRenderError, render_piece_pdf, render_territory_pdf
 
 
 def command_init_db(_args) -> int:
@@ -151,14 +152,37 @@ def command_check(_args) -> int:
     return 0
 
 
-def command_pdf_piece(_args) -> int:
-    print("A xeración de PDF de pezas aínda non está implementada.")
-    return 2
+def output_path(requested: str | None, filename: str) -> Path:
+    if requested:
+        path = Path(requested).expanduser().resolve()
+    else:
+        path = EXPORTS_DIR / "pdf" / filename
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
 
 
-def command_pdf_territory(_args) -> int:
-    print("A xeración de PDF territorial aínda non está implementada.")
-    return 2
+def command_pdf_piece(args) -> int:
+    conn = connect(DB_PATH)
+    try:
+        pdf, filename = render_piece_pdf(conn, int(args.piece_id))
+    finally:
+        conn.close()
+    path = output_path(args.output, filename)
+    path.write_bytes(pdf)
+    print(f"PDF xerado: {path}")
+    return 0
+
+
+def command_pdf_territory(args) -> int:
+    conn = connect(DB_PATH)
+    try:
+        pdf, filename = render_territory_pdf(conn, args.territory_id)
+    finally:
+        conn.close()
+    path = output_path(args.output, filename)
+    path.write_bytes(pdf)
+    print(f"PDF xerado: {path}")
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -216,6 +240,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     pdf_piece_parser = subparsers.add_parser("pdf-piece", help="Xerar PDF dunha peza.")
     pdf_piece_parser.add_argument("piece_id")
+    pdf_piece_parser.add_argument("--output", "-o", help="Ruta de saída do PDF.")
     pdf_piece_parser.set_defaults(handler=command_pdf_piece)
 
     pdf_territory_parser = subparsers.add_parser(
@@ -223,6 +248,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Xerar PDF das coplas dun territorio.",
     )
     pdf_territory_parser.add_argument("territory_id")
+    pdf_territory_parser.add_argument("--output", "-o", help="Ruta de saída do PDF.")
     pdf_territory_parser.set_defaults(handler=command_pdf_territory)
 
     return parser
@@ -234,7 +260,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         return args.handler(args)
-    except ValueError as exc:
+    except (ValueError, PdfRenderError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
 

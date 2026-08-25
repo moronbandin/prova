@@ -18,6 +18,10 @@ Este servidor tamén activa a API local:
 
 ```text
 POST /api/coplas
+POST /api/media
+POST /api/pdf/piece-draft
+GET /api/pieces/{id}/pdf
+GET /api/territories/{id}/pdf
 ```
 
 Iso permite que a pantalla `Alta` garde novas coplas directamente na SQLite e rexenere as exportacións web, sen descargar/importar JSON manualmente.
@@ -61,5 +65,24 @@ git push
 2. Engade coplas ao borrador.
 3. Vai a `Pezas`.
 4. Organiza as coplas por partes: `xota`, `muiñeira`, `pasodobre`, `valse`, `dansa`, `dous pasos`, `mazurca`, `polca`, etc.
-5. Usa `Abrir folla A4 / PDF` para imprimir ou gardar como PDF desde o navegador.
+5. Usa `Exportar PDF` para xerar un PDF real desde o servidor local e previsualizalo dentro da app.
 6. Usa `Descargar JSON` se queres importar esa peza no corpus.
+
+## Exportación PDF
+
+A exportación PDF real é unha capacidade local/admin: require abrir Fol e Ar desde `./serve.sh`, porque GitHub Pages só serve a parte estática do arquivo.
+
+O motor empregado é Google Chrome/Chromium en modo headless. Nun Mac con Google Chrome instalado non hai que instalar nada máis. Se queres usar outro binario:
+
+```bash
+FOL_E_AR_CHROME=/ruta/a/chromium ./serve.sh
+```
+
+Tamén podes xerar PDFs desde CLI:
+
+```bash
+python3 tools/admin.py pdf-territory par:3603002
+python3 tools/admin.py pdf-piece 12 --output /tmp/peza.pdf
+```
+
+Se non se indica `--output`, o PDF escríbese en `data/exports/pdf/`.

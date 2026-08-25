@@ -42,10 +42,31 @@ const state = {
   submitTerritoryId: "",
   submitTerritoryIds: [],
   mediaTerritoryIds: [],
+  pdfUrl: "",
+  pdfFilename: "",
+  pdfBusy: false,
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const all = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+const memoryStore = new Map();
+
+function storageGet(key) {
+  try {
+    return window.localStorage?.getItem(key) ?? memoryStore.get(key) ?? null;
+  } catch {
+    return memoryStore.get(key) ?? null;
+  }
+}
+
+function storageSet(key, value) {
+  memoryStore.set(key, value);
+  try {
+    window.localStorage?.setItem(key, value);
+  } catch {
+    // Keep the current session usable when browser storage is unavailable.
+  }
+}
 
 if (window.FOL_E_AR_FILE_MODE) {
   throw new Error("Fol e ar debe abrirse desde o servidor local, non con file://.");
@@ -81,7 +102,7 @@ function defaultDraft() {
 
 function loadDraft() {
   try {
-    const raw = JSON.parse(localStorage.getItem(DRAFT_KEY));
+    const raw = JSON.parse(storageGet(DRAFT_KEY));
     if (!raw || typeof raw !== "object") return defaultDraft();
     const base = defaultDraft();
     const sections = Array.isArray(raw.sections) && raw.sections.length ? raw.sections : base.sections;
@@ -99,7 +120,7 @@ function loadDraft() {
 }
 
 function saveDraft(draft) {
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  storageSet(DRAFT_KEY, JSON.stringify(draft));
   updateCartBadges(draft);
   return draft;
 }
@@ -118,7 +139,7 @@ function updateCartBadges(draft = loadDraft()) {
 
 function loadBatch() {
   try {
-    const raw = JSON.parse(localStorage.getItem(BATCH_KEY));
+    const raw = JSON.parse(storageGet(BATCH_KEY));
     return Array.isArray(raw) ? raw : [];
   } catch {
     return [];
@@ -126,7 +147,7 @@ function loadBatch() {
 }
 
 function saveBatch(batch) {
-  localStorage.setItem(BATCH_KEY, JSON.stringify(batch));
+  storageSet(BATCH_KEY, JSON.stringify(batch));
   return batch;
 }
 
@@ -755,9 +776,10 @@ function renderPiecesView() {
         <div class="header-actions">
           <button class="btn" type="button" id="clearPiece">Baleirar</button>
           <button class="btn" type="button" id="downloadPiece">Descargar estrutura</button>
-          <button class="btn primary" type="button" id="openA4">Folla A4 / PDF</button>
+          <button class="btn primary" type="button" id="openA4" ${state.pdfBusy ? "disabled" : ""}>${state.pdfBusy ? "Xerando PDF..." : "Exportar PDF"}</button>
         </div>
       </div>
+      <div id="pieceExportStatus" class="export-status" role="status" aria-live="polite"></div>
       <div class="toolbar piece-scopebar">
         <div class="searchbox"><span>⌕</span><input id="pieceTerritorySearch" type="search" value="${escapeHtml(state.pieceTerritoryQuery)}" placeholder="Centrar peza nun territorio..."></div>
         ${territory ? `<button class="btn" type="button" id="clearPieceTerritory">Limpar territorio: ${escapeHtml(territory.nome)}</button>` : `<span class="muted">Sen territorio de traballo.</span>`}
@@ -869,7 +891,7 @@ function renderPiecesView() {
   $("#downloadPiece")?.addEventListener("click", () => {
     downloadText("peza.json", JSON.stringify(buildPiecePayload(), null, 2), "application/json");
   });
-  $("#openA4")?.addEventListener("click", openA4Sheet);
+  $("#openA4")?.addEventListener("click", exportPiecePdf);
   all("[data-section-label]", view).forEach(select => select.addEventListener("change", () => {
     const next = loadDraft();
     const section = next.sections.find(item => item.id === select.dataset.sectionLabel);
@@ -982,17 +1004,104 @@ function buildPiecePayload() {
   };
 }
 
-function openA4Sheet() {
-  const draft = loadDraft();
-  const win = window.open("", "_blank", "noopener");
-  if (!win) {
-    window.alert("O navegador bloqueou a xanela de exportación.");
-    return;
+function filenameFromResponse(response, fallback) {
+  const header = response.headers.get("Content-Disposition") || "";
+  const match = header.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
+  if (match?.[1]) return decodeURIComponent(match[1].replace(/"/g, ""));
+  return fallback;
+}
+
+function setExportStatus(message, isError = false) {
+  const status = $("#pieceExportStatus");
+  if (!status) return;
+  status.textContent = message;
+  status.classList.toggle("is-error", isError);
+}
+
+function closePdfViewer() {
+  const viewer = $("#pdfViewer");
+  if (state.pdfUrl) URL.revokeObjectURL(state.pdfUrl);
+  state.pdfUrl = "";
+  state.pdfFilename = "";
+  if (viewer) {
+    viewer.hidden = true;
+    viewer.innerHTML = "";
   }
-  const html = `<!doctype html><html lang="gl"><head><meta charset="utf-8"><title>${escapeHtml(draft.title || "Peza")}</title><style>@page{size:A4;margin:16mm}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#20231f}h1{font-size:24pt;margin:0 0 2mm}header{border-bottom:1px solid #c7c8c2;padding-bottom:5mm;margin-bottom:8mm}.meta{color:#71776f;font-size:10pt}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10mm}.part{break-inside:avoid;margin-bottom:8mm}h2{text-transform:uppercase;font-size:12pt;color:#315f4b;letter-spacing:.08em}.copla{font-family:Georgia,"Times New Roman",serif;font-size:11pt;line-height:1.45;margin-bottom:5mm;white-space:pre-line}.copla.retrouso{margin-left:9mm;font-style:italic;color:#454b45}@media screen{body{max-width:210mm;margin:0 auto;padding:16mm;background:#fff}}</style></head><body><header><h1>${escapeHtml(draft.title || "Peza sen título")}</h1><div class="meta">${escapeHtml(draft.author || "Sen autoría")}</div></header><main class="grid">${draft.sections.filter(section => section.coplas.length).map(section => `<section class="part"><h2>${escapeHtml(section.label || "Parte")}</h2>${section.coplas.map(copla => `<article><div class="copla ${escapeHtml(copla.role || "copla")}">${escapeHtml(copla.text || "")}</div></article>`).join("")}</section>`).join("")}</main><script>window.onload=()=>{window.print()};window.onafterprint=()=>window.close();</script></body></html>`;
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
+}
+
+function openPdfViewer(blob, filename) {
+  closePdfViewer();
+  state.pdfUrl = URL.createObjectURL(blob);
+  state.pdfFilename = filename;
+  const viewer = $("#pdfViewer");
+  if (!viewer) return;
+  viewer.innerHTML = `
+    <div class="pdf-backdrop" data-close-pdf></div>
+    <section class="pdf-panel" role="dialog" aria-modal="true" aria-label="Previsualización PDF">
+      <header class="pdf-head">
+        <div>
+          <div class="eyebrow">Previsualización</div>
+          <h2>${escapeHtml(filename)}</h2>
+        </div>
+        <button class="drawer-close" type="button" data-close-pdf aria-label="Pechar">×</button>
+      </header>
+      <object class="pdf-frame" data="${state.pdfUrl}" type="application/pdf" aria-label="Previsualización PDF">
+        <p>Non foi posíbel previsualizar o PDF neste navegador. Podes descargalo co botón inferior.</p>
+      </object>
+      <footer class="pdf-actions">
+        <a class="btn primary" id="downloadGeneratedPdf" href="${state.pdfUrl}" download="${escapeHtml(filename)}">Descargar PDF</a>
+        <button class="btn" type="button" data-close-pdf>Pechar</button>
+      </footer>
+    </section>
+  `;
+  viewer.hidden = false;
+  all("[data-close-pdf]", viewer).forEach(button => button.addEventListener("click", closePdfViewer));
+}
+
+async function exportPiecePdf() {
+  if (state.pdfBusy) return;
+  const button = $("#openA4");
+  state.pdfBusy = true;
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Xerando PDF...";
+  }
+  setExportStatus("Xerando PDF...");
+  try {
+    const response = await fetch("../api/pdf/piece-draft", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(buildPiecePayload()),
+    });
+    if (!response.ok) {
+      let detail = "";
+      try {
+        detail = (await response.json()).error || "";
+      } catch {
+        detail = await response.text();
+      }
+      throw new Error(detail || `HTTP ${response.status}`);
+    }
+    const blob = await response.blob();
+    if (blob.type && blob.type !== "application/pdf") {
+      throw new Error(`Resposta inesperada: ${blob.type}`);
+    }
+    const filename = filenameFromResponse(response, `fol-e-ar-${slugify(loadDraft().title || "peza")}.pdf`);
+    openPdfViewer(blob, filename);
+    setExportStatus("");
+  } catch (error) {
+    console.error("Erro xerando PDF", error);
+    const localHint = location.hostname.includes("localhost") || location.hostname === "127.0.0.1"
+      ? "Non foi posíbel xerar o PDF."
+      : "A exportación PDF require abrir Fol e Ar co servidor local.";
+    setExportStatus(localHint, true);
+  } finally {
+    state.pdfBusy = false;
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Exportar PDF";
+    }
+  }
 }
 
 function renderTerritorySearchResults(root = $("#view-territory")) {
@@ -1105,7 +1214,7 @@ function renderTerritoryTab(territory, ctx) {
       return `
         <div class="section-title"><h2>Coplas de Galiza</h2><span class="muted">${ctx.coplas.length} no arquivo</span></div>
         <div class="territory-limit">Mostrando unha mostra inicial. Para traballar con todas as coplas dun ámbito concreto, escolle unha provincia, comarca, concello ou parroquia.</div>
-        <div class="copla-gallery">${sample.map(copla => coplaCard(copla)).join("") || `<p class="muted">Aínda non hai coplas no arquivo.</p>`}</div>
+        <div class="copla-gallery territory-copla-grid">${sample.map(copla => coplaCard(copla)).join("") || `<p class="muted">Aínda non hai coplas no arquivo.</p>`}</div>
       `;
     }
     if (["pieces", "melodies", "media"].includes(state.territoryTab)) {
@@ -1127,7 +1236,7 @@ function renderTerritoryTab(territory, ctx) {
   if (state.territoryTab === "coplas") {
     return `
       <div class="section-title"><h2>Coplas de ${escapeHtml(territory.nome)}</h2><span class="muted">${ctx.coplas.length} resultados</span></div>
-      <div class="copla-gallery">${ctx.coplas.map(copla => coplaCard(copla)).join("") || `<p class="muted">Aínda non hai coplas neste territorio.</p>`}</div>
+      <div class="copla-gallery territory-copla-grid">${ctx.coplas.map(copla => coplaCard(copla)).join("") || `<p class="muted">Aínda non hai coplas neste territorio.</p>`}</div>
     `;
   }
   if (state.territoryTab === "pieces") {
