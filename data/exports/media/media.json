@@ -1,5 +1,25 @@
 [
   {
+    "id": 3,
+    "provider": "youtube",
+    "media_kind": "youtube",
+    "title": "Mazurca 1",
+    "url": "https://youtu.be/uN7-bEahHgA?si=jbn747fq9mTUHfXe",
+    "description": null,
+    "author_or_source": null,
+    "thumbnail_url": null,
+    "status": "published",
+    "created_at": "2026-08-25 23:01:46",
+    "updated_at": "2026-08-25 23:01:46",
+    "links": [
+      {
+        "entity_type": "territory",
+        "entity_id": "par:3603704",
+        "relation_type": "mixed"
+      }
+    ]
+  },
+  {
     "id": 2,
     "provider": "youtube",
     "media_kind": "youtube",
