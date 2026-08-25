@@ -39,6 +39,38 @@ const state = {
 const $ = (selector, root = document) => root.querySelector(selector);
 const all = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
+function normalizeMode(mode = "map") {
+  const aliases = {
+    map: "place",
+    lugar: "place",
+    place: "place",
+    coplas: "corpus",
+    corpus: "corpus",
+    pieces: "builder",
+    pezas: "builder",
+    builder: "builder",
+    obradoiro: "builder",
+    alta: "submit",
+    submit: "submit",
+    media: "media",
+  };
+  return aliases[mode] || "place";
+}
+
+function publicModesFor(mode) {
+  const normalized = normalizeMode(mode);
+  if (normalized === "place") return ["map", "place", "lugar"];
+  if (normalized === "corpus") return ["coplas", "corpus"];
+  if (normalized === "builder") return ["pieces", "pezas", "builder", "obradoiro"];
+  if (normalized === "submit") return ["submit", "alta"];
+  if (normalized === "media") return ["media"];
+  return [normalized];
+}
+
+function sameMode(a, b) {
+  return normalizeMode(a) === normalizeMode(b);
+}
+
 function defaultDraft() {
   return {
     title: "",
@@ -67,7 +99,20 @@ function loadDraft() {
 
 function saveDraft(draft) {
   localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  updateCartBadges(draft);
   return draft;
+}
+
+function draftCount(draft = loadDraft()) {
+  return draft.sections.reduce((sum, section) => sum + section.coplas.length, 0);
+}
+
+function updateCartBadges(draft = loadDraft()) {
+  const total = draftCount(draft);
+  all("[data-cart-count]").forEach(item => {
+    item.textContent = total;
+    item.hidden = total === 0;
+  });
 }
 
 function loadBatch() {
@@ -85,10 +130,12 @@ function saveBatch(batch) {
 }
 
 function setMode(mode) {
-  state.mode = mode;
-  all("[data-mode]").forEach(tab => tab.classList.toggle("is-active", tab.dataset.mode === mode));
-  all(".mode-view").forEach(view => view.classList.toggle("is-active", view.id === `${mode}-view`));
-  document.body.classList.toggle("is-builder-mode", mode === "builder");
+  state.mode = normalizeMode(mode);
+  const activeModes = publicModesFor(state.mode);
+  all("[data-mode]").forEach(tab => tab.classList.toggle("is-active", activeModes.includes(tab.dataset.mode)));
+  all(".mode-view").forEach(view => view.classList.toggle("is-active", view.id === `${state.mode}-view`));
+  document.body.classList.toggle("is-builder-mode", state.mode === "builder");
+  updateCartBadges();
   renderActiveView();
 }
 
@@ -185,7 +232,7 @@ async function loadLayer(type = state.layerType) {
 
 async function selectTerritory(territory, options = {}) {
   state.selectedTerritory = territory;
-  if (options.switchMode) setMode("place");
+  if (options.switchMode) setMode("map");
   const layerSelect = $("#map-layer");
   if (territory.tipo !== state.layerType) {
     if (layerSelect) layerSelect.value = territory.tipo;
@@ -248,7 +295,7 @@ function renderSearch(query = "") {
   all("[data-copla-id]", box).forEach(button => {
     button.addEventListener("click", () => {
       state.selectedCoplaId = Number(button.dataset.coplaId);
-      setMode("corpus");
+      setMode("coplas");
     });
   });
 }
@@ -305,7 +352,7 @@ function renderPlaceView() {
   if (!territory) {
     view.innerHTML = `
       <div class="view-head">
-        <p class="micro-label">Lugar</p>
+        <p class="micro-label">Mapa</p>
         <h2>Escolle un punto do atlas</h2>
         <p class="quiet">O territorio é unha porta de entrada, non unha gaiola: tamén hai coplas xerais, sen adscrición e variantes textuais.</p>
       </div>
@@ -347,7 +394,7 @@ function renderPlaceView() {
     <section class="panel-block">
       <div class="block-title">
         <h3>Coplas do lugar</h3>
-        <button class="text-button" type="button" data-mode-jump="corpus">Abrir corpus</button>
+        <button class="text-button" type="button" data-mode-jump="coplas">Ver en Coplas</button>
       </div>
       <div class="territory-coplas">
         ${directCoplas.length ? `
@@ -401,7 +448,7 @@ function placeCoplaRow(copla) {
         <span>${(copla.versions || []).length ? `${(copla.versions || []).length} variantes` : "texto único"}</span>
       </div>
       <div class="unit-actions">
-        <button type="button" data-add-to-builder="${copla.id}">Obradoiro</button>
+        <button type="button" data-add-to-builder="${copla.id}">Engadir á peza</button>
         <button type="button" data-open-copla="${copla.id}">Ler</button>
       </div>
     </article>
@@ -421,7 +468,7 @@ function coplaCard(copla, options = {}) {
       <div class="copla-meta"><span>${escapeHtml(coplaPlaceLabel(copla))}</span><span>${versionCount ? `${versionCount} variantes` : "texto único"}</span></div>
       ${tags.length ? `<div class="chip-row">${tags.map(tag => `<span class="tag-chip">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
       <div class="unit-actions">
-        <button type="button" data-add-to-builder="${copla.id}">Levar ao obradoiro</button>
+        <button type="button" data-add-to-builder="${copla.id}">Engadir á peza</button>
         <button type="button" data-open-copla="${copla.id}">Contrastar</button>
       </div>
     </article>
@@ -476,7 +523,7 @@ function renderCorpusView() {
   const baseCount = state.selectedTerritory ? placeContext().coplas.length : state.coplas.length;
   view.innerHTML = `
     <div class="view-head">
-      <p class="micro-label">Corpus</p>
+      <p class="micro-label">Coplas</p>
       <h2>${state.selectedTerritory ? `Coplas de ${escapeHtml(state.selectedTerritory.nome)}` : "Arquivo textual"}</h2>
       <p class="quiet">Unha copla é unha unidade textual con versións, adscrición territorial e usos posibles.</p>
     </div>
@@ -533,7 +580,7 @@ function bindCoplaButtons(root = document) {
   all("[data-open-copla]", root).forEach(button => {
     button.addEventListener("click", () => {
       state.selectedCoplaId = Number(button.dataset.openCopla);
-      setMode("corpus");
+      setMode("coplas");
     });
   });
   all("[data-close-copla]", root).forEach(button => {
@@ -550,11 +597,17 @@ function bindCoplaButtons(root = document) {
       if (state.selectedTerritory && !draft.territoryId) draft.territoryId = state.selectedTerritory.id;
       if (state.selectedTerritory && !draft.title) draft.title = state.selectedTerritory.nome;
       const first = draft.sections[0];
+      const alreadyExists = draft.sections.some(section => section.coplas.some(item => Number(item.id) === Number(copla.id)));
       if (!draft.sections.some(section => section.coplas.some(item => Number(item.id) === Number(copla.id)))) {
         first.coplas.push({ id: copla.id, incipit: copla.incipit || "", text: copla.text || "", territory: coplaPlaceLabel(copla) });
       }
       saveDraft(draft);
-      setMode("builder");
+      button.textContent = alreadyExists ? "Xa está na peza" : "Engadida";
+      button.disabled = true;
+      window.setTimeout(() => {
+        button.textContent = "Engadir á peza";
+        button.disabled = false;
+      }, 1100);
     });
   });
 }
@@ -566,13 +619,13 @@ function renderBuilderView() {
   const total = draft.sections.reduce((sum, section) => sum + section.coplas.length, 0);
   const rhythmOptions = RHYTHMS.map(value => `<option value="${value}">${value}</option>`).join("");
   view.innerHTML = `
-    <div class="view-head"><p class="micro-label">Obradoiro</p><h2>Construír letra cantábel</h2><p class="quiet">Unha peza pode ter partes: catro coplas para unha xota, catro para unha muiñeira, ou a estrutura que precise o uso real.</p></div>
+    <div class="view-head"><p class="micro-label">Pezas</p><h2>Carriño da peza</h2><p class="quiet">As coplas engadidas durante a exploración quedan aquí para ordenar, separar por ritmo e preparar a folla de canto.</p></div>
     <section class="panel-block">
       <div class="form-grid">
         <label>Título<input id="builder-title" type="text" value="${escapeHtml(draft.title || territory?.nome || "")}" placeholder="Malpica"></label>
         <label>Autoría da selección<input id="builder-author" type="text" value="${escapeHtml(draft.author || "")}" placeholder="Nome da persoa que monta a letra"></label>
       </div>
-      <p class="quiet">${total} coplas seleccionadas${territory ? ` · ${escapeHtml(territory.nome)}` : ""}</p>
+      <div class="cart-summary"><strong>${total}</strong><span>coplas no carriño${territory ? ` · ${escapeHtml(territory.nome)}` : ""}</span><button type="button" class="text-button" data-mode-jump="coplas">Engadir máis</button></div>
     </section>
     <section class="panel-block">
       <div class="block-title"><h3>Partes</h3><button type="button" class="text-button" id="add-section">Engadir parte</button></div>
@@ -591,12 +644,12 @@ function renderBuilderView() {
                   <button type="button" data-remove-copla="${item.id}">Quitar</button>
                 </div>
               </article>
-            `).join("") || `<p class="quiet">Arrastra aquí coplas desde outra parte ou engádeas desde Lugar/Corpus.</p>`}
+            `).join("") || `<p class="quiet">Engade coplas desde Mapa ou Coplas, ou arrastra aquí desde outra parte.</p>`}
           </div>
         </article>`).join("")}
       </div>
     </section>
-    <section class="panel-block"><h3>Exportar</h3><div class="unit-actions"><button type="button" id="download-piece-json">JSON para importar peza</button><button type="button" id="open-a4">Folla A4 / gardar PDF</button><button type="button" id="clear-builder">Limpar obradoiro</button></div></section>
+    <section class="panel-block"><h3>Saída</h3><div class="unit-actions"><button type="button" id="download-piece-json">Descargar estrutura</button><button type="button" id="open-a4">Folla A4 / PDF</button><button type="button" id="clear-builder">Baleirar carriño</button></div></section>
   `;
   draft.sections.forEach(section => {
     const select = $(`[data-section-label="${section.id}"]`, view);
@@ -610,6 +663,7 @@ function renderBuilderView() {
     saveDraft(next);
     renderBuilderView();
   });
+  all("[data-mode-jump]", view).forEach(button => button.addEventListener("click", () => setMode(button.dataset.modeJump)));
   all("[data-section-label]", view).forEach(select => select.addEventListener("change", () => {
     const next = loadDraft();
     const section = next.sections.find(item => item.id === select.dataset.sectionLabel);
@@ -739,7 +793,7 @@ function renderSubmitView() {
   const batch = loadBatch();
   const selectedTerritory = state.territorios.find(item => item.id === state.submitTerritoryId) || state.selectedTerritory;
   view.innerHTML = `
-    <div class="view-head"><p class="micro-label">Alta local</p><h2>Nova copla ou variante</h2><p class="quiet">Se corres o proxecto con <code>./serve.sh</code>, este formulario pode gardar directamente na SQLite e rexenerar a web.</p></div>
+    <div class="view-head"><p class="micro-label">Alta</p><h2>Nova copla ou variante</h2><p class="quiet">Se corres o proxecto con <code>./serve.sh</code>, este formulario pode gardar directamente na SQLite e rexenerar a web.</p></div>
     <section class="panel-block">
       <label>Texto principal<textarea id="new-text" rows="5" placeholder="Escribe a copla..."></textarea></label>
       <div class="form-grid">
@@ -786,6 +840,42 @@ function renderSubmitView() {
     saveBatch([]);
     renderSubmitView();
   });
+}
+
+function mediaCard(item) {
+  const related = Array.isArray(item.related) ? item.related : [];
+  const url = item.url || item.href || "";
+  return `
+    <article class="media-card">
+      <div>
+        <p class="micro-label">${escapeHtml(item.type || item.provider || "media")}</p>
+        <h3>${escapeHtml(item.title || item.label || "Recurso sen título")}</h3>
+        ${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(url)}</a>` : `<p class="quiet">Sen ligazón pública.</p>`}
+      </div>
+      <p class="quiet">${related.length ? `${related.length} relacións documentais` : "Preparado para ligar a territorio, copla ou peza."}</p>
+    </article>
+  `;
+}
+
+function renderMediaView() {
+  const view = $("#media-view");
+  const ctx = placeContext();
+  const scoped = state.selectedTerritory ? ctx.media : state.media;
+  view.innerHTML = `
+    <div class="view-head">
+      <p class="micro-label">Media</p>
+      <h2>${state.selectedTerritory ? `Recursos de ${escapeHtml(state.selectedTerritory.nome)}` : "Arquivo sonoro e audiovisual"}</h2>
+      <p class="quiet">Espazo preparado para mp3, mp4, vídeos, Spotify, YouTube, webs externas e documentos ligados a coplas, pezas ou territorios.</p>
+    </div>
+    <section class="panel-block">
+      <div class="metric-grid">
+        <div class="metric"><strong>${scoped.length}</strong><span>recursos</span></div>
+        <div class="metric"><strong>${state.media.filter(item => ["audio", "mp3"].includes(item.type)).length}</strong><span>audios</span></div>
+        <div class="metric"><strong>${state.media.filter(item => ["video", "mp4", "youtube"].includes(item.type)).length}</strong><span>vídeos</span></div>
+      </div>
+      <div class="media-lanes">${scoped.map(mediaCard).join("") || `<p class="quiet">Aínda non hai media neste ámbito.</p>`}</div>
+    </section>
+  `;
 }
 
 function buildCoplaPayloadFromForm() {
@@ -881,6 +971,7 @@ function renderActiveView() {
   if (state.mode === "corpus") renderCorpusView();
   if (state.mode === "builder") renderBuilderView();
   if (state.mode === "submit") renderSubmitView();
+  if (state.mode === "media") renderMediaView();
 }
 
 async function init() {
@@ -915,6 +1006,8 @@ async function init() {
     if (state.workbenchFocused) state.workbenchCollapsed = false;
     syncWorkbenchChrome();
   });
+  updateCartBadges();
+
   document.addEventListener("click", event => {
     const tab = event.target.closest("[data-mode]");
     if (tab) setMode(tab.dataset.mode);
@@ -927,20 +1020,20 @@ async function init() {
   const initialMode = params.get("mode");
   if (coplaId) {
     state.selectedCoplaId = Number(coplaId);
-    setMode("corpus");
+    setMode("coplas");
     return;
   }
   if (territoryId) {
     const territory = state.territorios.find(item => item.id === territoryId);
     if (territory) {
-      await selectTerritory(territory, { switchMode: initialMode !== "corpus" });
-      if (initialMode && ["place", "corpus", "builder", "submit"].includes(initialMode)) {
+      await selectTerritory(territory, { switchMode: !sameMode(initialMode, "coplas") });
+      if (initialMode && ["place", "map", "lugar", "corpus", "coplas", "builder", "pieces", "pezas", "submit", "alta", "media"].includes(initialMode)) {
         setMode(initialMode);
       }
       return;
     }
   }
-  if (initialMode && ["place", "corpus", "builder", "submit"].includes(initialMode)) {
+  if (initialMode && ["place", "map", "lugar", "corpus", "coplas", "builder", "pieces", "pezas", "submit", "alta", "media"].includes(initialMode)) {
     setMode(initialMode);
     return;
   }

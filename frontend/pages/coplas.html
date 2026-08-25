@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Coplas</title>
-  <meta http-equiv="refresh" content="0; url=../index.html?mode=corpus">
+  <meta http-equiv="refresh" content="0; url=../index.html?mode=coplas">
   <script>
     const params = new URL(location.href).searchParams;
     const territory = params.get("territory_id");
-    window.location.replace(`../index.html${territory ? `?territory_id=${encodeURIComponent(territory)}&mode=corpus` : "?mode=corpus"}`);
+    window.location.replace(`../index.html${territory ? `?territory_id=${encodeURIComponent(territory)}&mode=coplas` : "?mode=coplas"}`);
   </script>
 </head>
-<body><a href="../index.html?mode=corpus">Abrir corpus</a></body>
+<body><a href="../index.html?mode=coplas">Abrir coplas</a></body>
 </html>

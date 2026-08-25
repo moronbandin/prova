@@ -19,21 +19,25 @@
         </span>
       </a>
       <nav class="rail-nav" aria-label="Vistas">
-        <button class="rail-item is-active" type="button" data-mode="place" title="Lugar">
+        <button class="rail-item is-active" type="button" data-mode="map" title="Mapa">
           <span class="rail-icon" aria-hidden="true">⌖</span>
-          <span>Lugar</span>
+          <span>Mapa</span>
         </button>
-        <button class="rail-item" type="button" data-mode="corpus" title="Coplas">
+        <button class="rail-item" type="button" data-mode="coplas" title="Coplas">
           <span class="rail-icon" aria-hidden="true">≋</span>
           <span>Coplas</span>
         </button>
-        <button class="rail-item" type="button" data-mode="builder" title="Obradoiro">
+        <button class="rail-item" type="button" data-mode="pieces" title="Pezas">
           <span class="rail-icon" aria-hidden="true">♪</span>
-          <span>Obradoiro</span>
+          <span>Pezas <b class="cart-count" data-cart-count>0</b></span>
         </button>
         <button class="rail-item" type="button" data-mode="submit" title="Alta">
           <span class="rail-icon" aria-hidden="true">＋</span>
           <span>Alta</span>
+        </button>
+        <button class="rail-item" type="button" data-mode="media" title="Media">
+          <span class="rail-icon" aria-hidden="true">▶</span>
+          <span>Media</span>
         </button>
       </nav>
       <div class="rail-spacer"></div>
@@ -72,9 +76,9 @@
 
     <aside class="workbench" aria-label="Banco de traballo">
       <nav class="mode-tabs" aria-label="Vistas">
-        <button class="mode-tab is-active" type="button" data-mode="place">Lugar</button>
-        <button class="mode-tab" type="button" data-mode="corpus">Corpus</button>
-        <button class="mode-tab" type="button" data-mode="builder">Obradoiro</button>
+        <button class="mode-tab is-active" type="button" data-mode="map">Mapa</button>
+        <button class="mode-tab" type="button" data-mode="coplas">Coplas</button>
+        <button class="mode-tab" type="button" data-mode="pieces">Pezas <b class="cart-count" data-cart-count>0</b></button>
         <button class="mode-tab" type="button" data-mode="submit">Alta</button>
       </nav>
 
@@ -82,12 +86,13 @@
       <section id="corpus-view" class="mode-view"></section>
       <section id="builder-view" class="mode-view"></section>
       <section id="submit-view" class="mode-view"></section>
+      <section id="media-view" class="mode-view"></section>
     </aside>
 
     <nav class="mobile-rail" aria-label="Navegación móbil">
-      <button class="is-active" type="button" data-mode="place">⌖<span>Lugar</span></button>
-      <button type="button" data-mode="corpus">≋<span>Coplas</span></button>
-      <button type="button" data-mode="builder">♪<span>Obradoiro</span></button>
+      <button class="is-active" type="button" data-mode="map">⌖<span>Mapa</span></button>
+      <button type="button" data-mode="coplas">≋<span>Coplas</span></button>
+      <button type="button" data-mode="pieces">♪<span>Pezas</span><b class="cart-count" data-cart-count>0</b></button>
       <button type="button" data-mode="submit">＋<span>Alta</span></button>
     </nav>
   </main>

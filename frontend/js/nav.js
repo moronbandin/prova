@@ -9,12 +9,12 @@ function makeHref(target) {
 
   const map = {
     home: insidePages ? "../index.html" : "./index.html",
-    mapa: insidePages ? "./mapa.html" : "./pages/mapa.html",
-    territorios: insidePages ? "./territorios.html" : "./pages/territorios.html",
-    coplas: insidePages ? "./coplas.html" : "./pages/coplas.html",
-    pezas: insidePages ? "./pezas.html" : "./pages/pezas.html",
-    media: insidePages ? "./media.html" : "./pages/media.html",
-    admin: insidePages ? "./importar.html" : "./pages/importar.html",
+    mapa: insidePages ? "../index.html?mode=map" : "./index.html?mode=map",
+    territorios: insidePages ? "../index.html?mode=map" : "./index.html?mode=map",
+    coplas: insidePages ? "../index.html?mode=coplas" : "./index.html?mode=coplas",
+    pezas: insidePages ? "../index.html?mode=pieces" : "./index.html?mode=pieces",
+    media: insidePages ? "../index.html?mode=media" : "./index.html?mode=media",
+    admin: insidePages ? "../index.html?mode=alta" : "./index.html?mode=alta",
   };
 
   return map[target] || target;
@@ -27,7 +27,7 @@ const NAV_ITEMS = [
   { hrefKey: "coplas", label: "Coplas", key: "coplas" },
   { hrefKey: "pezas", label: "Pezas", key: "pezas" },
   { hrefKey: "media", label: "Media", key: "media" },
-  { hrefKey: "admin", label: "Admin local", key: "admin" },
+  { hrefKey: "admin", label: "Alta", key: "admin" },
 ];
 
 function buildNav(current = "") {

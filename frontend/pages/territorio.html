@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Territorio</title>
-  <meta http-equiv="refresh" content="0; url=../index.html?mode=place">
+  <meta http-equiv="refresh" content="0; url=../index.html?mode=map">
   <script>
     const id = new URL(location.href).searchParams.get("id");
-    window.location.replace(`../index.html${id ? `?territory_id=${encodeURIComponent(id)}` : "?mode=place"}`);
+    window.location.replace(`../index.html${id ? `?territory_id=${encodeURIComponent(id)}&mode=map` : "?mode=map"}`);
   </script>
 </head>
-<body><a href="../index.html?mode=place">Abrir o novo atlas</a></body>
+<body><a href="../index.html?mode=map">Abrir o novo atlas</a></body>
 </html>
