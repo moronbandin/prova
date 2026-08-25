@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
 from backend.services.db import connect, migrate
 from backend.services.db_paths import DB_PATH
 from backend.services.exporters import export_web
-from backend.services.importers import import_coplas, import_media
+from backend.services.importers import import_coplas, import_media, import_pieces
 from backend.services.pdf import (
     PdfRenderError,
     render_piece_draft_pdf,
@@ -83,7 +83,7 @@ class LocalHandler(SimpleHTTPRequestHandler):
                 self._send_json(500, {"ok": False, "error": str(exc)})
             return
 
-        if self.path not in {"/api/coplas", "/api/media"}:
+        if self.path not in {"/api/coplas", "/api/media", "/api/pieces"}:
             self._send_json(404, {"error": "Endpoint non atopado."})
             return
 
@@ -95,8 +95,10 @@ class LocalHandler(SimpleHTTPRequestHandler):
             try:
                 if self.path == "/api/coplas":
                     ids = import_coplas(conn, payload)
-                else:
+                elif self.path == "/api/media":
                     ids = import_media(conn, payload)
+                else:
+                    ids = import_pieces(conn, payload)
                 conn.commit()
                 counts = export_web(conn)
             finally:
@@ -171,6 +173,7 @@ def main() -> int:
     print(f"Servidor local: http://localhost:{port}/frontend/index.html")
     print("API local: POST /api/coplas")
     print("API local: POST /api/media")
+    print("API local: POST /api/pieces")
     print("API local: POST /api/pdf/piece-draft")
     print("API local: GET /api/pieces/{id}/pdf")
     print("API local: GET /api/territories/{id}/pdf")

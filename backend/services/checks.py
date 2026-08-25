@@ -104,8 +104,9 @@ def run_checks(conn: sqlite3.Connection) -> list[str]:
     for row in media_links:
         entity_type = row["entity_type"]
         entity_id = row["entity_id"]
-        if entity_type == "territory" and entity_id not in territory_ids:
-            issues.append(f"Media {row['media_id']} referencia territory inexistente: {entity_id}")
+        if entity_type == "territory":
+            if entity_id not in territory_ids:
+                issues.append(f"Media {row['media_id']} referencia territory inexistente: {entity_id}")
         elif entity_type == "copla":
             try:
                 numeric_id = int(entity_id)

@@ -44,6 +44,7 @@ function buildPaths() {
       com: `${assetsBase}assets/web/comarcas.web.geojson`,
       con: `${assetsBase}assets/web/concellos.web.geojson`,
       par: `${assetsBase}assets/web/parroquias.web.topo.json`,
+      cerdedoCotobadeParts: `${assetsBase}assets/web/cerdedo-cotobade-parts.geojson`,
     },
   };
 }

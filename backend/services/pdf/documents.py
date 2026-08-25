@@ -210,8 +210,18 @@ def build_piece_draft_document(conn: sqlite3.Connection, payload: dict[str, Any]
         for item in section.get("coplas", []):
             copla_id = item.get("copla_id")
             if copla_id is None:
-                continue
-            copla = fetch_copla(conn, int(copla_id))
+                text = item.get("text") or ""
+                if not text.strip():
+                    continue
+                copla = {
+                    "id": None,
+                    "text": text,
+                    "incipit": item.get("incipit") or first_line(text),
+                    "notes": item.get("notes"),
+                    "territories": [item.get("territory")] if item.get("territory") else [],
+                }
+            else:
+                copla = fetch_copla(conn, int(copla_id))
             copla.update(
                 {
                     "position": item.get("position"),
