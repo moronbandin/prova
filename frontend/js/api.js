@@ -1,4 +1,5 @@
 const cache = new Map();
+let cacheVersion = 0;
 
 function isLocalFrontendMode() {
   return window.location.pathname.includes("/frontend/");
@@ -50,7 +51,9 @@ function buildPaths() {
 }
 
 function resolvePath(path) {
-  return new URL(path, window.location.href).toString();
+  const url = new URL(path, window.location.href);
+  if (cacheVersion) url.searchParams.set("_", String(cacheVersion));
+  return url.toString();
 }
 
 async function fetchJson(path) {
@@ -60,7 +63,7 @@ async function fetchJson(path) {
     return cache.get(resolved);
   }
 
-  const promise = fetch(resolved).then(async (res) => {
+  const promise = fetch(resolved, { cache: "no-store" }).then(async (res) => {
     if (!res.ok) {
       throw new Error(`Non se puido cargar ${path}`);
     }
@@ -104,6 +107,7 @@ export async function getMedia() {
 
 export function clearApiCache() {
   cache.clear();
+  cacheVersion += 1;
 }
 
 export function getPathConfig() {

@@ -1,5 +1,53 @@
 [
   {
+    "id": 6,
+    "text": "Costureiriña bonita,\nOnde tes os teus vestidos?\nTéñoos gardados na hucha\npara poñer os domingos.",
+    "normalized_text": "costureirina bonita, onde tes os teus vestidos? tenoos gardados na hucha para poner os domingos.",
+    "incipit": "Costureiriña bonita, Onde tes os teus",
+    "notes": null,
+    "status": "published",
+    "territory_state": "assigned",
+    "created_at": "2026-08-25 22:54:36",
+    "updated_at": "2026-08-25 22:54:36",
+    "territories": [
+      {
+        "id": "par:3603704",
+        "nome": "A Ermida (Nosa Señora da Anunciación)",
+        "tipo": "par",
+        "relation_type": "direct",
+        "is_direct": 1
+      }
+    ],
+    "tags": [
+      "lingua-galego"
+    ],
+    "versions": []
+  },
+  {
+    "id": 5,
+    "text": "Costureiriña bonita,\nonde tes a túa cama?\nNo poleiro das galiñas,\nnunha feixiña de palla",
+    "normalized_text": "costureirina bonita, onde tes a tua cama? no poleiro das galinas, nunha feixina de palla",
+    "incipit": "Costureiriña bonita, onde tes a túa",
+    "notes": null,
+    "status": "published",
+    "territory_state": "assigned",
+    "created_at": "2026-08-25 22:49:31",
+    "updated_at": "2026-08-25 22:49:31",
+    "territories": [
+      {
+        "id": "par:3603704",
+        "nome": "A Ermida (Nosa Señora da Anunciación)",
+        "tipo": "par",
+        "relation_type": "direct",
+        "is_direct": 1
+      }
+    ],
+    "tags": [
+      "lingua-galego"
+    ],
+    "versions": []
+  },
+  {
     "id": 4,
     "text": "De onde son aqueles mozos\nde onde son de onde serán?\nSon da parroquia de Cambre\ndaquela terriña chan.",
     "normalized_text": "de onde son aqueles mozos de onde son de onde seran? son da parroquia de cambre daquela terrina chan.",

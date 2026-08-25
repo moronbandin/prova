@@ -1969,6 +1969,9 @@ async function saveMediaDirect() {
     if (firstTerritoryId) state.selectedTerritory = state.territorios.find(item => item.id === firstTerritoryId) || state.selectedTerritory;
     state.mediaModalOpen = false;
     state.mediaDefaultRole = "";
+    state.mediaQuery = "";
+    state.mediaKindFilter = "";
+    state.mediaRoleFilter = "";
     renderMediaView();
   } catch (error) {
     feedback.textContent = `${error.message} Comproba que estás usando ./serve.sh 8765.`;
@@ -2143,7 +2146,7 @@ function renderAboutView() {
         <article class="panel"><h2>Construír</h2><p>Pezas como carriño editorial: escoller, ordenar, separar por ritmos e exportar para cantar.</p></article>
       </div>
       <section class="panel public-submit">
-        <div class="section-title"><h2>Enviar unha copla</h2><span class="muted">chega a folear3@gmail.com</span></div>
+        <div class="section-title"><h2>Enviar unha copla</h2><span class="muted">Achega para revisión editorial</span></div>
         <form id="publicCoplaForm" class="formgrid">
           <div class="field full">
             <label>Texto da copla</label>
