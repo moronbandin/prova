@@ -190,7 +190,7 @@ function mediaUrl(item) {
 }
 
 function mediaKind(item) {
-  const explicit = normalizeText(item.type || item.provider || item.kind || "");
+  const explicit = normalizeText(item.media_kind || item.type || item.provider || item.kind || "");
   const url = mediaUrl(item).toLowerCase();
   if (explicit.includes("spotify") || url.includes("open.spotify.com")) return "spotify";
   if (explicit.includes("youtube") || url.includes("youtu.be") || url.includes("youtube.com")) return "youtube";
@@ -231,6 +231,7 @@ function mediaCard(item) {
   const description = item.description || item.notes || item.artist || item.context || "";
   const yt = kind === "youtube" ? youtubeId(url) : "";
   let preview = `<div class="media-preview is-${kind}"><span>${escapeHtml(mediaLabel(kind))}</span></div>`;
+  if (item.thumbnail_url) preview = `<img class="media-preview" src="${escapeHtml(item.thumbnail_url)}" alt="">`;
   if (kind === "image" && url) preview = `<img class="media-preview" src="${escapeHtml(url)}" alt="">`;
   if (kind === "youtube" && yt) preview = `<img class="media-preview" src="https://img.youtube.com/vi/${escapeHtml(yt)}/hqdefault.jpg" alt="">`;
   if (kind === "audio" && url) preview = `<div class="media-preview is-audio"><span>Audio</span><audio controls src="${escapeHtml(url)}"></audio></div>`;
@@ -368,9 +369,9 @@ function renderMapSearch(query = "") {
       </button>
     `).join("")}
     ${coplaHits.map(item => `
-      <button type="button" data-copla-id="${item.id}">
+      <button class="result-copla" type="button" data-copla-id="${item.id}">
         <strong>${escapeHtml(coplaTitle(item))}</strong>
-        <span>${escapeHtml(coplaPlaceLabel(item))}</span>
+        <span>Copla</span>
       </button>
     `).join("")}
     ${!territoryHits.length && !coplaHits.length ? `<p class="muted">Sen resultados.</p>` : ""}
@@ -561,7 +562,7 @@ function openCoplaDrawer(coplaId) {
     <aside class="drawer-panel" role="dialog" aria-modal="true" aria-label="Ficha da copla">
       <button class="card-close" type="button" data-close-drawer aria-label="Pechar">×</button>
       <div class="eyebrow">Ficha textual</div>
-      <h2>${escapeHtml(copla.incipit || "Copla")}</h2>
+      <h2>${escapeHtml(coplaTitle(copla))}</h2>
       <div class="gallery-text">${nl2br(copla.text || "")}</div>
       <div class="drawer-section">
         <h3>Territorio</h3>
@@ -941,7 +942,7 @@ function buildPiecePayload() {
 
 function openA4Sheet() {
   const draft = loadDraft();
-  const html = `<!doctype html><html lang="gl"><head><meta charset="utf-8"><title>${escapeHtml(draft.title || "Peza")}</title><style>@page{size:A4;margin:16mm}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#20231f}h1{font-size:24pt;margin:0 0 2mm}header{border-bottom:1px solid #c7c8c2;padding-bottom:5mm;margin-bottom:8mm}.meta{color:#71776f;font-size:10pt}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10mm}.part{break-inside:avoid;margin-bottom:8mm}h2{text-transform:uppercase;font-size:12pt;color:#315f4b;letter-spacing:.08em}.copla{font-family:Georgia,serif;font-size:11pt;line-height:1.45;margin-bottom:5mm;white-space:pre-line}.copla.retrouso{margin-left:9mm;font-style:italic;color:#454b45}.role{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#858b84}</style></head><body><header><h1>${escapeHtml(draft.title || "Peza sen título")}</h1><div class="meta">${escapeHtml(draft.author || "Sen autoría")}</div></header><main class="grid">${draft.sections.filter(section => section.coplas.length).map(section => `<section class="part"><h2>${escapeHtml(section.label || "Parte")}</h2>${section.coplas.map(copla => `<article><div class="role">${(copla.role || "copla") === "retrouso" ? "Retr. " : "Copla"}</div><div class="copla ${escapeHtml(copla.role || "copla")}">${escapeHtml(copla.text || "")}</div></article>`).join("")}</section>`).join("")}</main><script>window.print();</script></body></html>`;
+  const html = `<!doctype html><html lang="gl"><head><meta charset="utf-8"><title>${escapeHtml(draft.title || "Peza")}</title><style>@page{size:A4;margin:16mm}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#20231f}h1{font-size:24pt;margin:0 0 2mm}header{border-bottom:1px solid #c7c8c2;padding-bottom:5mm;margin-bottom:8mm}.meta{color:#71776f;font-size:10pt}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10mm}.part{break-inside:avoid;margin-bottom:8mm}h2{text-transform:uppercase;font-size:12pt;color:#315f4b;letter-spacing:.08em}.copla{font-family:Georgia,serif;font-size:11pt;line-height:1.45;margin-bottom:5mm;white-space:pre-line}.copla.retrouso{margin-left:9mm;font-style:italic;color:#454b45}</style></head><body><header><h1>${escapeHtml(draft.title || "Peza sen título")}</h1><div class="meta">${escapeHtml(draft.author || "Sen autoría")}</div></header><main class="grid">${draft.sections.filter(section => section.coplas.length).map(section => `<section class="part"><h2>${escapeHtml(section.label || "Parte")}</h2>${section.coplas.map(copla => `<article><div class="copla ${escapeHtml(copla.role || "copla")}">${escapeHtml(copla.text || "")}</div></article>`).join("")}</section>`).join("")}</main><script>window.print();</script></body></html>`;
   const blob = new Blob([html], { type: "text/html" });
   const url = URL.createObjectURL(blob);
   window.open(url, "_blank", "noopener");
@@ -959,6 +960,27 @@ function renderTerritorySearchResults(root = $("#view-territory")) {
   const matches = searchTerritories(state.territorios, query).slice(0, 30);
   results.innerHTML = matches.map(item => `<button type="button" data-territory-id="${item.id}"><strong>${escapeHtml(item.nome)}</strong><span>${escapeHtml(territoryLabel(item))}</span></button>`).join("") || `<p class="muted">Sen resultados.</p>`;
   bindResultButtons(results);
+}
+
+function updateTerritoryTabPanel(root = $("#view-territory")) {
+  const panel = $("#territoryTabPanel", root);
+  if (!panel) return;
+  panel.innerHTML = renderTerritoryTab(state.selectedTerritory, placeContext(state.selectedTerritory));
+  bindTerritoryTabs(root);
+  bindResultButtons(panel);
+  bindCoplaActions(panel);
+}
+
+function bindTerritoryTabs(root = $("#view-territory")) {
+  all("[data-territory-tab]", root).forEach(button => {
+    button.classList.toggle("active", button.dataset.territoryTab === state.territoryTab);
+    if (button.dataset.boundTerritoryTab) return;
+    button.dataset.boundTerritoryTab = "true";
+    button.addEventListener("click", () => {
+      state.territoryTab = button.dataset.territoryTab;
+      updateTerritoryTabPanel(root);
+    });
+  });
 }
 
 function renderTerritoryView() {
@@ -1015,10 +1037,7 @@ function renderTerritoryView() {
     state.territoryQuery = event.target.value;
     renderTerritorySearchResults(view);
   });
-  all("[data-territory-tab]", view).forEach(button => button.addEventListener("click", () => {
-    state.territoryTab = button.dataset.territoryTab;
-    renderTerritoryView();
-  }));
+  bindTerritoryTabs(view);
   bindResultButtons(view);
   bindCoplaActions(view);
   renderTerritorySearchResults(view);

@@ -303,9 +303,11 @@ a {
   top: 18px;
   left: 18px;
   z-index: 800;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr) 132px auto;
+  gap: 6px;
   align-items: center;
-  width: min(410px, calc(100% - 36px));
+  width: min(560px, calc(100% - 36px));
   padding: 6px;
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.04);
@@ -329,7 +331,7 @@ a {
 }
 
 .floating-search select {
-  width: 118px;
+  width: 132px;
   padding: 9px 8px;
   color: var(--ink);
   background: #f7f8f6;
@@ -339,7 +341,7 @@ a {
 }
 
 .floating-search button {
-  padding: 10px 13px;
+  padding: 10px 16px;
   color: #ffffff;
   background: var(--accent);
   border: 0;
@@ -353,7 +355,7 @@ a {
   z-index: 801;
   display: grid;
   gap: 7px;
-  width: min(410px, calc(100% - 36px));
+  width: min(560px, calc(100% - 36px));
 }
 
 .floating-results button,
@@ -375,6 +377,16 @@ a {
 .territory-results span {
   font-size: 12px;
   color: var(--muted);
+}
+
+.floating-results .result-copla {
+  background: rgba(248, 246, 239, 0.97);
+  border-color: #e5dcc9;
+}
+
+.floating-results .result-copla span {
+  color: #8a6d35;
+  font-weight: 700;
 }
 
 .map-card {
@@ -1337,11 +1349,16 @@ label {
   }
 
   .floating-search {
-    flex-wrap: wrap;
+    grid-template-columns: auto minmax(0, 1fr);
   }
 
   .floating-search select {
-    flex: 1 1 120px;
+    grid-column: 1 / 2;
+    width: 100%;
+  }
+
+  .floating-search button {
+    grid-column: 2 / 3;
   }
 
   .floating-results {
