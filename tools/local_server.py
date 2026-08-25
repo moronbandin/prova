@@ -47,7 +47,7 @@ class LocalHandler(SimpleHTTPRequestHandler):
 def main() -> int:
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8765
     server = ThreadingHTTPServer(("", port), LocalHandler)
-    print(f"Coplas Galegas")
+    print("Fol e ar")
     print(f"Servidor local: http://localhost:{port}/frontend/index.html")
     print("API local: POST /api/coplas")
     print()

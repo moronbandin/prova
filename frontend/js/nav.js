@@ -34,7 +34,7 @@ function buildNav(current = "") {
   return `
     <nav class="topnav" aria-label="Navegación principal">
       <div class="topnav-inner">
-        <a class="topnav-brand" href="${makeHref("home")}">Coplas Galegas</a>
+        <a class="topnav-brand" href="${makeHref("home")}">Fol e ar</a>
         <div class="topnav-links">
           ${NAV_ITEMS.map(item => `
             <a class="topnav-link ${item.key === current ? "is-active" : ""}" href="${makeHref(item.hrefKey)}">

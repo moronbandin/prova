@@ -1,1 +1,1 @@
-"""Backend helpers for the Coplas Galegas project."""
+"""Backend helpers for the Fol e ar project."""

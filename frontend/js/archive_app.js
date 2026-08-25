@@ -14,8 +14,8 @@ import {
 } from "./territory_data.js";
 
 const RHYTHMS = ["xota", "muiñeira", "pasodobre", "valse", "dansa", "dous pasos", "mazurca", "polca", "rumba", "alalá"];
-const DRAFT_KEY = "arquivo-vivo-builder-v1";
-const BATCH_KEY = "arquivo-vivo-submit-v1";
+const DRAFT_KEY = "fol-e-ar-builder-v1";
+const BATCH_KEY = "fol-e-ar-submit-v1";
 
 const state = {
   territorios: [],
@@ -28,6 +28,9 @@ const state = {
   selectedTerritory: null,
   selectedCoplaId: null,
   mode: "place",
+  coplaViewMode: "grid",
+  corpusQuery: "",
+  corpusStateFilter: "",
   workbenchCollapsed: false,
   workbenchFocused: false,
   submitTerritoryId: "",
@@ -83,7 +86,7 @@ function saveBatch(batch) {
 
 function setMode(mode) {
   state.mode = mode;
-  all(".mode-tab").forEach(tab => tab.classList.toggle("is-active", tab.dataset.mode === mode));
+  all("[data-mode]").forEach(tab => tab.classList.toggle("is-active", tab.dataset.mode === mode));
   all(".mode-view").forEach(view => view.classList.toggle("is-active", view.id === `${mode}-view`));
   document.body.classList.toggle("is-builder-mode", mode === "builder");
   renderActiveView();
@@ -92,8 +95,16 @@ function setMode(mode) {
 function syncWorkbenchChrome() {
   document.body.classList.toggle("workbench-collapsed", state.workbenchCollapsed);
   document.body.classList.toggle("workbench-focused", state.workbenchFocused);
-  $("#collapse-workbench").textContent = state.workbenchCollapsed ? "Abrir panel" : "Panel";
-  $("#focus-workbench").textContent = state.workbenchFocused ? "Mapa + panel" : "Foco";
+  const collapse = $("#collapse-workbench");
+  const focus = $("#focus-workbench");
+  if (collapse) {
+    collapse.title = state.workbenchCollapsed ? "Abrir panel" : "Colapsar panel";
+    collapse.setAttribute("aria-label", collapse.title);
+  }
+  if (focus) {
+    focus.title = state.workbenchFocused ? "Volver a mapa e panel" : "Ver panel a pantalla completa";
+    focus.setAttribute("aria-label", focus.title);
+  }
   window.setTimeout(() => state.map?.invalidateSize(), 220);
 }
 
@@ -401,7 +412,7 @@ function coplaCard(copla, options = {}) {
   const versionCount = (copla.versions || []).length;
   const tags = (copla.tags || []).slice(0, 4);
   return `
-    <article class="copla-unit ${options.compact ? "is-compact" : ""}">
+    <article class="copla-unit ${options.compact ? "is-compact" : ""} ${options.gallery ? "is-gallery" : ""}">
       <div class="copla-topline">
         <button type="button" class="copla-title" data-open-copla="${copla.id}">${escapeHtml(copla.incipit || `Copla #${copla.id}`)}</button>
         <span class="state-badge">${escapeHtml(copla.territory_state || "assigned")}</span>
@@ -417,14 +428,52 @@ function coplaCard(copla, options = {}) {
   `;
 }
 
+function corpusMatches(copla, query) {
+  const q = normalizeText(query || "");
+  if (!q) return true;
+  const haystack = [
+    copla.text,
+    copla.incipit,
+    copla.notes,
+    coplaPlaceLabel(copla),
+    (copla.tags || []).join(" "),
+    (copla.versions || []).map(version => `${version.text} ${version.label || ""} ${version.notes || ""}`).join(" "),
+  ].join(" ");
+  return normalizeText(haystack).includes(q);
+}
+
+function currentCorpusItems() {
+  const ctx = placeContext();
+  const scoped = state.selectedTerritory ? ctx.coplas : state.coplas;
+  return scoped.filter(copla => {
+    const stateOk = !state.corpusStateFilter || copla.territory_state === state.corpusStateFilter;
+    return stateOk && corpusMatches(copla, state.corpusQuery);
+  });
+}
+
+function renderCorpusList(view) {
+  const stream = $(".copla-stream", view);
+  const count = $("#corpus-count", view);
+  if (!stream) return;
+  const items = currentCorpusItems();
+  stream.className = `copla-stream is-${state.coplaViewMode}`;
+  stream.innerHTML = items.map(copla => coplaCard(copla, {
+    compact: state.coplaViewMode !== "list",
+    gallery: state.coplaViewMode === "gallery",
+  })).join("") || `<p class="quiet">Sen coplas neste ámbito.</p>`;
+  if (count) count.textContent = `${items.length} coplas`;
+  all("[data-view-mode]", view).forEach(button => button.classList.toggle("is-active", button.dataset.viewMode === state.coplaViewMode));
+  all("[data-filter-state]", view).forEach(button => button.classList.toggle("is-active", button.dataset.filterState === state.corpusStateFilter));
+  bindCoplaButtons(view);
+}
+
 function renderCorpusView() {
   const view = $("#corpus-view");
-  const ctx = placeContext();
   const selected = state.selectedCoplaId ? state.coplas.find(item => Number(item.id) === Number(state.selectedCoplaId)) : null;
-  const scoped = state.selectedTerritory ? ctx.coplas : state.coplas;
   const assigned = state.coplas.filter(item => item.territory_state === "assigned").length;
   const unassigned = state.coplas.filter(item => item.territory_state === "unassigned").length;
   const general = state.coplas.filter(item => item.territory_state === "general").length;
+  const baseCount = state.selectedTerritory ? placeContext().coplas.length : state.coplas.length;
   view.innerHTML = `
     <div class="view-head">
       <p class="micro-label">Corpus</p>
@@ -432,24 +481,40 @@ function renderCorpusView() {
       <p class="quiet">Unha copla é unha unidade textual con versións, adscrición territorial e usos posibles.</p>
     </div>
     <div class="metric-grid">
+      <button class="metric metric-button" type="button" data-filter-state=""><strong>${baseCount}</strong><span>todas</span></button>
       <button class="metric metric-button" type="button" data-filter-state="assigned"><strong>${assigned}</strong><span>asignadas</span></button>
       <button class="metric metric-button" type="button" data-filter-state="unassigned"><strong>${unassigned}</strong><span>sen lugar</span></button>
       <button class="metric metric-button" type="button" data-filter-state="general"><strong>${general}</strong><span>xerais</span></button>
     </div>
     ${selected ? renderCoplaDetail(selected) : ""}
     <section class="panel-block">
-      <div class="block-title"><h3>${scoped.length} coplas</h3><span class="quiet">${state.selectedTerritory ? "inclúe herdadas dos subterritorios" : "todo o corpus exportado"}</span></div>
-      <div class="copla-stream">${scoped.map(copla => coplaCard(copla)).join("") || `<p class="quiet">Sen coplas neste ámbito.</p>`}</div>
+      <div class="corpus-toolbar">
+        <label class="corpus-search"><span class="visually-hidden">Buscar coplas</span><input id="corpus-search" type="search" value="${escapeHtml(state.corpusQuery)}" placeholder="Buscar por verso, íncipit, territorio, etiqueta..."></label>
+        <div class="view-switcher" aria-label="Tipo de visualización">
+          <button type="button" data-view-mode="grid">Grade</button>
+          <button type="button" data-view-mode="list">Lista</button>
+          <button type="button" data-view-mode="gallery">Galería</button>
+        </div>
+      </div>
+      <div class="block-title"><h3 id="corpus-count">0 coplas</h3><span class="quiet">${state.selectedTerritory ? "inclúe herdadas dos subterritorios" : "todo o corpus exportado"}</span></div>
+      <div class="copla-stream"></div>
     </section>
   `;
-  bindCoplaButtons(view);
+  $("#corpus-search", view)?.addEventListener("input", event => {
+    state.corpusQuery = event.target.value;
+    renderCorpusList(view);
+  });
+  all("[data-view-mode]", view).forEach(button => button.addEventListener("click", () => {
+    state.coplaViewMode = button.dataset.viewMode;
+    renderCorpusList(view);
+  }));
   all("[data-filter-state]", view).forEach(button => {
     button.addEventListener("click", () => {
-      const filtered = state.coplas.filter(item => item.territory_state === button.dataset.filterState);
-      $(".copla-stream", view).innerHTML = filtered.map(copla => coplaCard(copla)).join("") || `<p class="quiet">Sen coplas nesta categoría.</p>`;
-      bindCoplaButtons(view);
+      state.corpusStateFilter = button.dataset.filterState;
+      renderCorpusList(view);
     });
   });
+  renderCorpusList(view);
 }
 
 function renderCoplaDetail(copla) {
@@ -850,7 +915,7 @@ async function init() {
     if (state.workbenchFocused) state.workbenchCollapsed = false;
     syncWorkbenchChrome();
   });
-  $(".mode-tabs").addEventListener("click", event => {
+  document.addEventListener("click", event => {
     const tab = event.target.closest("[data-mode]");
     if (tab) setMode(tab.dataset.mode);
   });

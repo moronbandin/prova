@@ -3,24 +3,57 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Arquivo Vivo de Coplas</title>
-  <meta name="description" content="PMV dun atlas textual, musical e editorial de coplas galegas.">
+  <title>Fol e ar</title>
+  <meta name="description" content="Atlas textual, musical e editorial de coplas galegas.">
   <link rel="stylesheet" href="./css/style.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body class="archive-shell">
-  <main class="archive-app" aria-label="Arquivo Vivo de Coplas">
+  <main class="archive-app" aria-label="Fol e ar">
+    <aside class="app-rail" aria-label="Navegación principal">
+      <a class="brand-lockup" href="./index.html" aria-label="Fol e ar">
+        <span class="brand-mark">Fe</span>
+        <span class="brand-copy">
+          <strong>Fol e ar</strong>
+          <small>arquivo e repertorio</small>
+        </span>
+      </a>
+      <nav class="rail-nav" aria-label="Vistas">
+        <button class="rail-item is-active" type="button" data-mode="place" title="Lugar">
+          <span class="rail-icon" aria-hidden="true">⌖</span>
+          <span>Lugar</span>
+        </button>
+        <button class="rail-item" type="button" data-mode="corpus" title="Coplas">
+          <span class="rail-icon" aria-hidden="true">≋</span>
+          <span>Coplas</span>
+        </button>
+        <button class="rail-item" type="button" data-mode="builder" title="Obradoiro">
+          <span class="rail-icon" aria-hidden="true">♪</span>
+          <span>Obradoiro</span>
+        </button>
+        <button class="rail-item" type="button" data-mode="submit" title="Alta">
+          <span class="rail-icon" aria-hidden="true">＋</span>
+          <span>Alta</span>
+        </button>
+      </nav>
+      <div class="rail-spacer"></div>
+      <button class="rail-item rail-muted" id="collapse-workbench" type="button" aria-label="Colapsar panel">
+        <span class="rail-icon" aria-hidden="true">›</span>
+        <span>Panel</span>
+      </button>
+      <button class="rail-item rail-muted" id="focus-workbench" type="button" aria-label="Ver panel a pantalla completa">
+        <span class="rail-icon" aria-hidden="true">□</span>
+        <span>Foco</span>
+      </button>
+    </aside>
+
     <section class="map-stage" aria-label="Mapa territorial">
       <div id="archive-map" class="archive-map"></div>
 
       <div class="map-command">
-        <div>
-          <p class="micro-label">Arquivo Vivo</p>
-          <h1>Coplas por lugar, texto e uso</h1>
-        </div>
         <div class="command-grid">
           <label class="visually-hidden" for="global-search">Buscar</label>
-          <input id="global-search" type="search" placeholder="Buscar Malpica, Muxía, unha palabra, unha etiqueta...">
+          <input id="global-search" type="search" placeholder="Buscar lugar, verso ou etiqueta">
           <label class="visually-hidden" for="map-layer">Capa</label>
           <select id="map-layer">
             <option value="con" selected>Concellos</option>
@@ -38,10 +71,6 @@
     </section>
 
     <aside class="workbench" aria-label="Banco de traballo">
-      <div class="workbench-controls">
-        <button id="collapse-workbench" type="button" aria-label="Colapsar panel">Panel</button>
-        <button id="focus-workbench" type="button" aria-label="Ver panel a pantalla completa">Foco</button>
-      </div>
       <nav class="mode-tabs" aria-label="Vistas">
         <button class="mode-tab is-active" type="button" data-mode="place">Lugar</button>
         <button class="mode-tab" type="button" data-mode="corpus">Corpus</button>
@@ -54,6 +83,13 @@
       <section id="builder-view" class="mode-view"></section>
       <section id="submit-view" class="mode-view"></section>
     </aside>
+
+    <nav class="mobile-rail" aria-label="Navegación móbil">
+      <button class="is-active" type="button" data-mode="place">⌖<span>Lugar</span></button>
+      <button type="button" data-mode="corpus">≋<span>Coplas</span></button>
+      <button type="button" data-mode="builder">♪<span>Obradoiro</span></button>
+      <button type="button" data-mode="submit">＋<span>Alta</span></button>
+    </nav>
   </main>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

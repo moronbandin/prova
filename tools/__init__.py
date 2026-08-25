@@ -1,1 +1,1 @@
-"""Command-line tools for the Coplas Galegas project."""
+"""Command-line tools for the Fol e ar project."""
