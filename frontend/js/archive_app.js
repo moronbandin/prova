@@ -548,6 +548,7 @@ function bindResultButtons(root = document) {
 
 function coplaCard(copla, options = {}) {
   const versionCount = (copla.versions || []).length;
+  const versionChip = versionCount ? `<span class="tag">${versionCount} variantes</span>` : "";
   return `
     <article class="gallery-card ${options.list ? "as-list" : ""}" tabindex="0" role="button" data-open-copla="${copla.id}">
       <div>
@@ -558,11 +559,11 @@ function coplaCard(copla, options = {}) {
         <h2 class="gallery-title">${escapeHtml(coplaTitle(copla))}</h2>
         <div class="gallery-text">${nl2br(copla.text || "")}</div>
       </div>
-      <div class="gallery-bottom">
+      ${versionChip ? `<div class="gallery-bottom">
         <div class="meta">
-          <span class="tag">${versionCount ? `${versionCount} variantes` : "texto único"}</span>
+          ${versionChip}
         </div>
-      </div>
+      </div>` : ""}
     </article>
   `;
 }
@@ -2042,6 +2043,8 @@ function filteredMediaItems() {
     const role = mediaRole(item);
     const matchesRole = !state.mediaRoleFilter || role === state.mediaRoleFilter || (state.mediaRoleFilter !== "mixed" && role === "mixed");
     const territories = mediaTerritories(item);
+    const territoryContext = territories.flatMap(territory => buildHierarchy(territory, state.territorios))
+      .map(territory => `${territory.nome} ${territorySearchMeta(territory)}`);
     const matchesText = !query || normalizeText([
       item.title,
       item.description,
@@ -2050,7 +2053,7 @@ function filteredMediaItems() {
       item.url,
       mediaRoleLabel(role),
       mediaLabel(mediaKind(item)),
-      territories.map(territory => `${territory.nome} ${territorySearchMeta(territory)}`).join(" "),
+      territoryContext.join(" "),
       (item.links || []).map(link => `${link.entity_type} ${link.entity_id} ${link.relation_type}`).join(" "),
     ].join(" ")).includes(query);
     return matchesKind && matchesRole && matchesText;
