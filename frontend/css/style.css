@@ -145,7 +145,7 @@ a {
 
 .sidebar.collapsed .brandtext,
 .sidebar.collapsed .nav-label,
-.sidebar.collapsed .sidebar-foot span {
+.sidebar.collapsed .sidebar-foot button span:not(.nav-icon) {
   width: 0;
   overflow: hidden;
   opacity: 0;
@@ -1023,16 +1023,36 @@ label {
 .builder-section {
   min-height: 220px;
   padding: 12px;
-  background: #f7f8f6;
+  background: linear-gradient(180deg, #fbfcfa, #f4f6f3);
   border: 1px solid var(--line);
   border-radius: 8px;
 }
 
 .section-line {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 34px;
   gap: 8px;
   margin-bottom: 10px;
+}
+
+.section-line select,
+.seq-tools select {
+  appearance: none;
+  color: #25302a;
+  background-color: #ffffff;
+  background-image: linear-gradient(45deg, transparent 50%, #77827a 50%), linear-gradient(135deg, #77827a 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+  background-repeat: no-repeat;
+  background-size: 5px 5px, 5px 5px;
+  border-color: #d9ded8;
+  box-shadow: 0 1px 2px rgba(28, 33, 29, 0.04);
+}
+
+.section-line select:focus,
+.seq-tools select:focus {
+  border-color: #9fb5a9;
+  box-shadow: 0 0 0 3px rgba(49, 95, 75, 0.12);
+  outline: none;
 }
 
 .sequence-list {
@@ -1091,10 +1111,44 @@ label {
   gap: 5px;
 }
 
-.seq-tools button {
+.seq-tools select {
+  width: 78px;
+  height: 30px;
+  padding: 0 18px 0 8px;
+  font-size: 11px;
+}
+
+.seq-tools button,
+.icon-trash {
   width: 30px;
   height: 30px;
+  padding: 0;
   background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.icon-trash {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: #7a514f;
+  font-size: 15px;
+}
+
+.icon-trash:hover,
+.seq-tools button:hover {
+  background: #f5eeee;
+  border-color: #e0c6c3;
+}
+
+.territory-limit,
+.territory-limit-panel {
+  padding: 13px 15px;
+  margin-bottom: 14px;
+  color: #59615a;
+  background: #f3f5f2;
   border: 1px solid var(--line);
   border-radius: 8px;
 }
@@ -1214,7 +1268,7 @@ label {
     left: 12px;
     z-index: 1200;
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     padding: 7px;
     background: #1f2421;
     border-radius: 8px;
