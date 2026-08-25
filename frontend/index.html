@@ -5,100 +5,114 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Fol e ar</title>
   <meta name="description" content="Atlas textual, musical e editorial de coplas galegas.">
-  <link rel="stylesheet" href="./css/style.css">
+  <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="./css/style.css">
+  <script>
+    window.FOL_E_AR_FILE_MODE = location.protocol === "file:";
+    if (window.FOL_E_AR_FILE_MODE) {
+      const localUrl = `http://localhost:8765/frontend/index.html${location.search}${location.hash}`;
+      fetch(localUrl, { mode: "no-cors" })
+        .then(() => location.replace(localUrl))
+        .catch(() => {
+          window.addEventListener("DOMContentLoaded", () => {
+            document.body.innerHTML = `
+              <main class="file-mode-notice">
+                <section>
+                  <h1>Fol e ar precisa o servidor local</h1>
+                  <p>Abre a app desde localhost para poder cargar JSON, GeoJSON e módulos JavaScript.</p>
+                  <code>./serve.sh 8765</code>
+                  <a href="${localUrl}">Abrir localhost</a>
+                </section>
+              </main>
+            `;
+          });
+        });
+    }
+  </script>
 </head>
-<body class="archive-shell">
-  <main class="archive-app" aria-label="Fol e ar">
-    <aside class="app-rail" aria-label="Navegación principal">
-      <a class="brand-lockup" href="./index.html" aria-label="Fol e ar">
-        <span class="brand-mark">Fe</span>
-        <span class="brand-copy">
-          <strong>Fol e ar</strong>
-          <small>arquivo e repertorio</small>
+<body class="fol-shell">
+  <div class="app">
+    <aside class="sidebar" id="sidebar" aria-label="Navegación principal">
+      <a class="brand" href="./index.html" aria-label="Fol e ar">
+        <span class="brandmark">Fe</span>
+        <span class="brandtext">
+          <strong class="brandtitle">Fol e ar</strong>
+          <small class="brandsub">arquivo e repertorio</small>
         </span>
       </a>
-      <nav class="rail-nav" aria-label="Vistas">
-        <button class="rail-item is-active" type="button" data-mode="map" title="Mapa">
-          <span class="rail-icon" aria-hidden="true">⌖</span>
-          <span>Mapa</span>
-        </button>
-        <button class="rail-item" type="button" data-mode="coplas" title="Coplas">
-          <span class="rail-icon" aria-hidden="true">≋</span>
-          <span>Coplas</span>
-        </button>
-        <button class="rail-item" type="button" data-mode="pieces" title="Pezas">
-          <span class="rail-icon" aria-hidden="true">♪</span>
-          <span>Pezas <b class="cart-count" data-cart-count>0</b></span>
-        </button>
-        <button class="rail-item" type="button" data-mode="submit" title="Alta">
-          <span class="rail-icon" aria-hidden="true">＋</span>
-          <span>Alta</span>
-        </button>
-        <button class="rail-item" type="button" data-mode="media" title="Media">
-          <span class="rail-icon" aria-hidden="true">▶</span>
-          <span>Media</span>
-        </button>
+
+      <nav class="nav">
+        <button class="active" type="button" data-view="map"><span class="nav-icon">⌖</span><span class="nav-label">Mapa</span></button>
+        <button type="button" data-view="territory"><span class="nav-icon">⌂</span><span class="nav-label">Territorios</span></button>
+        <button type="button" data-view="coplas"><span class="nav-icon">≋</span><span class="nav-label">Coplas</span></button>
+        <button type="button" data-view="pieces"><span class="nav-icon">♪</span><span class="nav-label">Pezas <b class="cart-count" data-cart-count hidden>0</b></span></button>
+        <button type="button" data-view="submit"><span class="nav-icon">＋</span><span class="nav-label">Alta</span></button>
+        <button type="button" data-view="media"><span class="nav-icon">▶</span><span class="nav-label">Media</span></button>
       </nav>
-      <div class="rail-spacer"></div>
-      <button class="rail-item rail-muted" id="collapse-workbench" type="button" aria-label="Colapsar panel">
-        <span class="rail-icon" aria-hidden="true">›</span>
-        <span>Panel</span>
-      </button>
-      <button class="rail-item rail-muted" id="focus-workbench" type="button" aria-label="Ver panel a pantalla completa">
-        <span class="rail-icon" aria-hidden="true">□</span>
-        <span>Foco</span>
-      </button>
+
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-foot">
+        <button id="collapseBtn" type="button"><span class="nav-icon">‹</span><span>Contraer</span></button>
+        <button type="button" data-view="about"><span class="nav-icon">i</span><span>Sobre o arquivo</span></button>
+      </div>
     </aside>
 
-    <section class="map-stage" aria-label="Mapa territorial">
-      <div id="archive-map" class="archive-map"></div>
-
-      <div class="map-command">
-        <div class="command-grid">
-          <label class="visually-hidden" for="global-search">Buscar</label>
-          <input id="global-search" type="search" placeholder="Buscar lugar, verso ou etiqueta">
-          <label class="visually-hidden" for="map-layer">Capa</label>
-          <select id="map-layer">
-            <option value="con" selected>Concellos</option>
+    <main class="main">
+      <section class="view active" id="view-map" aria-label="Mapa">
+        <div class="map-wrap"><div id="map"></div></div>
+        <div class="floating-search">
+          <span class="search-glyph">⌕</span>
+          <input id="mapSearch" type="search" placeholder="Buscar territorio, copla ou etiqueta">
+          <select id="mapLayer" aria-label="Capa territorial">
+            <option value="con">Concellos</option>
             <option value="par">Parroquias</option>
             <option value="com">Comarcas</option>
             <option value="prov">Provincias</option>
           </select>
+          <button id="mapSearchBtn" type="button">Buscar</button>
         </div>
-        <div id="search-results" class="search-results"></div>
-      </div>
+        <div id="mapResults" class="floating-results"></div>
+        <article class="map-card">
+          <button id="clearTerritory" class="card-close" type="button" aria-label="Limpar territorio">×</button>
+          <div class="eyebrow">Territorio seleccionado</div>
+          <h2 id="mapCardTitle">Galiza</h2>
+          <p id="mapCardText">Explora o corpus territorialmente ou emprega a busca para localizar unha parroquia, concello, copla ou peza.</p>
+          <div class="stats">
+            <div class="stat"><b id="mapCoplaCount">0</b><span>coplas</span></div>
+            <div class="stat"><b id="mapPieceCount">0</b><span>pezas</span></div>
+            <div class="stat"><b id="mapTerritoryCount">0</b><span>territorios</span></div>
+          </div>
+          <div class="map-actions">
+            <button class="btn primary" type="button" data-map-action="territory">Abrir territorio</button>
+            <button class="btn" type="button" data-map-action="coplas">Ver coplas</button>
+          </div>
+        </article>
+      </section>
 
-      <div class="map-status">
-        <span id="map-status-text">Cargando atlas...</span>
-      </div>
-    </section>
+      <section class="view" id="view-coplas" aria-label="Coplas"></section>
+      <section class="view" id="view-pieces" aria-label="Pezas"></section>
+      <section class="view" id="view-territory" aria-label="Territorios"></section>
+      <section class="view" id="view-submit" aria-label="Alta"></section>
+      <section class="view" id="view-media" aria-label="Media"></section>
+      <section class="view" id="view-about" aria-label="Sobre Fol e ar"></section>
+      <div id="coplaDrawer" class="copla-drawer" hidden></div>
+    </main>
+  </div>
 
-    <aside class="workbench" aria-label="Banco de traballo">
-      <nav class="mode-tabs" aria-label="Vistas">
-        <button class="mode-tab is-active" type="button" data-mode="map">Mapa</button>
-        <button class="mode-tab" type="button" data-mode="coplas">Coplas</button>
-        <button class="mode-tab" type="button" data-mode="pieces">Pezas <b class="cart-count" data-cart-count>0</b></button>
-        <button class="mode-tab" type="button" data-mode="submit">Alta</button>
-      </nav>
-
-      <section id="place-view" class="mode-view is-active"></section>
-      <section id="corpus-view" class="mode-view"></section>
-      <section id="builder-view" class="mode-view"></section>
-      <section id="submit-view" class="mode-view"></section>
-      <section id="media-view" class="mode-view"></section>
-    </aside>
-
-    <nav class="mobile-rail" aria-label="Navegación móbil">
-      <button class="is-active" type="button" data-mode="map">⌖<span>Mapa</span></button>
-      <button type="button" data-mode="coplas">≋<span>Coplas</span></button>
-      <button type="button" data-mode="pieces">♪<span>Pezas</span><b class="cart-count" data-cart-count>0</b></button>
-      <button type="button" data-mode="submit">＋<span>Alta</span></button>
-    </nav>
-  </main>
+  <nav class="mobile-nav" aria-label="Navegación móbil">
+    <button class="active" type="button" data-view="map">⌖<span>Mapa</span></button>
+    <button type="button" data-view="territory">⌂<span>Territorios</span></button>
+    <button type="button" data-view="coplas">≋<span>Coplas</span></button>
+    <button type="button" data-view="pieces">♪<span>Pezas</span><b class="cart-count" data-cart-count hidden>0</b></button>
+    <button type="button" data-view="submit">＋<span>Alta</span></button>
+    <button type="button" data-view="media">▶<span>Media</span></button>
+  </nav>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/topojson-client@3"></script>
-  <script type="module" src="./js/archive_app.js"></script>
+  <script type="module">
+    if (!window.FOL_E_AR_FILE_MODE) import("./js/archive_app.js");
+  </script>
 </body>
 </html>

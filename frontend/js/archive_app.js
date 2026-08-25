@@ -13,9 +13,10 @@ import {
   searchTerritories,
 } from "./territory_data.js";
 
-const RHYTHMS = ["xota", "muiñeira", "pasodobre", "valse", "dansa", "dous pasos", "mazurca", "polca", "rumba", "alalá"];
-const DRAFT_KEY = "fol-e-ar-builder-v1";
+const RHYTHMS = ["Canto", "Xota", "Muiñeira", "Agarrado", "Pasodobre", "Valse", "Dansa", "Dous pasos", "Mazurca", "Polca"];
+const DRAFT_KEY = "fol-e-ar-piece-cart-v2";
 const BATCH_KEY = "fol-e-ar-submit-v1";
+const VIEWS = ["map", "coplas", "pieces", "territory", "submit", "media", "about"];
 
 const state = {
   territorios: [],
@@ -27,48 +28,41 @@ const state = {
   layerType: "con",
   selectedTerritory: null,
   selectedCoplaId: null,
-  mode: "place",
+  miniMap: null,
+  miniLayer: null,
+  view: "map",
+  territoryTab: "summary",
   coplaViewMode: "grid",
-  corpusQuery: "",
-  corpusStateFilter: "",
-  workbenchCollapsed: false,
-  workbenchFocused: false,
+  coplaQuery: "",
+  territoryQuery: "",
+  pieceLibraryQuery: "",
+  pieceTerritoryQuery: "",
+  pieceRepositoryQuery: "",
   submitTerritoryId: "",
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const all = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
-function normalizeMode(mode = "map") {
+if (window.FOL_E_AR_FILE_MODE) {
+  throw new Error("Fol e ar debe abrirse desde o servidor local, non con file://.");
+}
+
+function normalizeView(view = "map") {
   const aliases = {
-    map: "place",
-    lugar: "place",
-    place: "place",
-    coplas: "corpus",
-    corpus: "corpus",
-    pieces: "builder",
-    pezas: "builder",
-    builder: "builder",
-    obradoiro: "builder",
+    place: "map",
+    lugar: "map",
+    mapa: "map",
+    corpus: "coplas",
+    copla: "coplas",
+    pezas: "pieces",
+    builder: "pieces",
+    obradoiro: "pieces",
     alta: "submit",
-    submit: "submit",
-    media: "media",
+    importar: "submit",
+    territorios: "territory",
   };
-  return aliases[mode] || "place";
-}
-
-function publicModesFor(mode) {
-  const normalized = normalizeMode(mode);
-  if (normalized === "place") return ["map", "place", "lugar"];
-  if (normalized === "corpus") return ["coplas", "corpus"];
-  if (normalized === "builder") return ["pieces", "pezas", "builder", "obradoiro"];
-  if (normalized === "submit") return ["submit", "alta"];
-  if (normalized === "media") return ["media"];
-  return [normalized];
-}
-
-function sameMode(a, b) {
-  return normalizeMode(a) === normalizeMode(b);
+  return aliases[view] || (VIEWS.includes(view) ? view : "map");
 }
 
 function defaultDraft() {
@@ -77,8 +71,10 @@ function defaultDraft() {
     author: "",
     territoryId: "",
     sections: [
-      { id: "xota", label: "xota", coplas: [] },
-      { id: "muineira", label: "muiñeira", coplas: [] },
+      { id: "canto", label: "Canto", coplas: [] },
+      { id: "xota", label: "Xota", coplas: [] },
+      { id: "muineira", label: "Muiñeira", coplas: [] },
+      { id: "agarrado", label: "Agarrado", coplas: [] },
     ],
   };
 }
@@ -109,9 +105,9 @@ function draftCount(draft = loadDraft()) {
 
 function updateCartBadges(draft = loadDraft()) {
   const total = draftCount(draft);
-  all("[data-cart-count]").forEach(item => {
-    item.textContent = total;
-    item.hidden = total === 0;
+  all("[data-cart-count]").forEach(badge => {
+    badge.textContent = total;
+    badge.hidden = total === 0;
   });
 }
 
@@ -129,42 +125,25 @@ function saveBatch(batch) {
   return batch;
 }
 
-function setMode(mode) {
-  state.mode = normalizeMode(mode);
-  const activeModes = publicModesFor(state.mode);
-  all("[data-mode]").forEach(tab => tab.classList.toggle("is-active", activeModes.includes(tab.dataset.mode)));
-  all(".mode-view").forEach(view => view.classList.toggle("is-active", view.id === `${state.mode}-view`));
-  document.body.classList.toggle("is-builder-mode", state.mode === "builder");
-  updateCartBadges();
-  renderActiveView();
-}
-
-function syncWorkbenchChrome() {
-  document.body.classList.toggle("workbench-collapsed", state.workbenchCollapsed);
-  document.body.classList.toggle("workbench-focused", state.workbenchFocused);
-  const collapse = $("#collapse-workbench");
-  const focus = $("#focus-workbench");
-  if (collapse) {
-    collapse.title = state.workbenchCollapsed ? "Abrir panel" : "Colapsar panel";
-    collapse.setAttribute("aria-label", collapse.title);
-  }
-  if (focus) {
-    focus.title = state.workbenchFocused ? "Volver a mapa e panel" : "Ver panel a pantalla completa";
-    focus.setAttribute("aria-label", focus.title);
-  }
-  window.setTimeout(() => state.map?.invalidateSize(), 220);
-}
-
 function topoToGeo(data) {
   if (data?.type !== "Topology" || !window.topojson) return data;
   const objectName = Object.keys(data.objects || {})[0];
   return window.topojson.feature(data, data.objects[objectName]);
 }
 
+function territoryLabel(territory) {
+  return territory ? (TYPE_LABELS[territory.tipo] || territory.tipo || "Territorio") : "Territorio";
+}
+
+function coplaPlaceLabel(copla) {
+  if ((copla.territories || []).length) return copla.territories.map(item => item.nome).join(", ");
+  if (copla.territory_state === "general") return "Galiza xeral";
+  if (copla.territory_state === "unassigned") return "Lugar descoñecido";
+  return "Sen territorio";
+}
+
 function placeContext(territory = state.selectedTerritory) {
-  if (!territory) {
-    return { hierarchy: [], children: [], descendantIds: [], coplas: [], pezas: [], media: [] };
-  }
+  if (!territory) return { hierarchy: [], children: [], descendantIds: [], coplas: [], pezas: [], media: [] };
   const descendantIds = getDescendantIds(territory, state.territorios);
   const coplas = filterCoplasByTerritory(state.coplas, descendantIds);
   const pezas = filterPiecesByTerritory(state.pezas, descendantIds, coplas);
@@ -179,28 +158,126 @@ function placeContext(territory = state.selectedTerritory) {
   };
 }
 
-function territoryLine(territory) {
-  return territory ? `${TYPE_LABELS[territory.tipo] || territory.tipo}` : "Sen territorio";
+function coplaHaystack(copla) {
+  return [
+    copla.text,
+    copla.incipit,
+    copla.notes,
+    copla.territory_state,
+    coplaPlaceLabel(copla),
+    (copla.tags || []).join(" "),
+    (copla.versions || []).map(version => `${version.label || ""} ${version.text || ""} ${version.notes || ""}`).join(" "),
+  ].join(" ");
 }
 
-function coplaPlaceLabel(copla) {
-  if ((copla.territories || []).length) return copla.territories.map(item => item.nome).join(", ");
-  if (copla.territory_state === "general") return "Galiza xeral";
-  if (copla.territory_state === "unassigned") return "Lugar descoñecido";
-  return "Sen territorio";
+function firstLine(text = "") {
+  return String(text).split(/\r?\n/).find(line => line.trim())?.trim() || "";
+}
+
+function coplaTitle(copla) {
+  return copla.incipit || firstLine(copla.text) || "Copla sen íncipit";
+}
+
+function mediaUrl(item) {
+  return item.url || item.href || item.link || "";
+}
+
+function mediaKind(item) {
+  const explicit = normalizeText(item.type || item.provider || item.kind || "");
+  const url = mediaUrl(item).toLowerCase();
+  if (explicit.includes("spotify") || url.includes("open.spotify.com")) return "spotify";
+  if (explicit.includes("youtube") || url.includes("youtu.be") || url.includes("youtube.com")) return "youtube";
+  if (explicit.includes("audio") || /\.(mp3|wav|ogg|m4a)(\?|#|$)/.test(url)) return "audio";
+  if (explicit.includes("video") || /\.(mp4|mov|webm)(\?|#|$)/.test(url)) return "video";
+  if (explicit.includes("imaxe") || explicit.includes("image") || /\.(png|jpe?g|gif|webp|avif)(\?|#|$)/.test(url)) return "image";
+  return url ? "web" : "media";
+}
+
+function mediaLabel(kind) {
+  return {
+    spotify: "Spotify",
+    youtube: "YouTube",
+    audio: "Audio",
+    video: "Video",
+    image: "Imaxe",
+    web: "Web",
+    media: "Media",
+  }[kind] || "Media";
+}
+
+function youtubeId(url = "") {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname.includes("youtu.be")) return parsed.pathname.slice(1);
+    if (parsed.searchParams.get("v")) return parsed.searchParams.get("v");
+    const match = parsed.pathname.match(/\/(embed|shorts)\/([^/?]+)/);
+    return match?.[2] || "";
+  } catch {
+    return "";
+  }
+}
+
+function mediaCard(item) {
+  const url = mediaUrl(item);
+  const kind = mediaKind(item);
+  const title = item.title || item.label || item.name || "Recurso sen título";
+  const description = item.description || item.notes || item.artist || item.context || "";
+  const yt = kind === "youtube" ? youtubeId(url) : "";
+  let preview = `<div class="media-preview is-${kind}"><span>${escapeHtml(mediaLabel(kind))}</span></div>`;
+  if (kind === "image" && url) preview = `<img class="media-preview" src="${escapeHtml(url)}" alt="">`;
+  if (kind === "youtube" && yt) preview = `<img class="media-preview" src="https://img.youtube.com/vi/${escapeHtml(yt)}/hqdefault.jpg" alt="">`;
+  if (kind === "audio" && url) preview = `<div class="media-preview is-audio"><span>Audio</span><audio controls src="${escapeHtml(url)}"></audio></div>`;
+  if (kind === "video" && url) preview = `<video class="media-preview" controls src="${escapeHtml(url)}"></video>`;
+  return `
+    <article class="media-card">
+      ${preview}
+      <div class="media-body">
+        <div class="eyebrow">${escapeHtml(mediaLabel(kind))}</div>
+        <h2>${escapeHtml(title)}</h2>
+        ${description ? `<p>${escapeHtml(description)}</p>` : ""}
+        ${url ? `<a class="media-link" href="${escapeHtml(url)}" target="_blank" rel="noopener">Abrir recurso</a>` : `<p class="muted">Sen ligazón pública.</p>`}
+      </div>
+    </article>
+  `;
+}
+
+function setView(viewName) {
+  state.view = normalizeView(viewName);
+  all(".view").forEach(view => view.classList.toggle("active", view.id === `view-${state.view}`));
+  all("[data-view]").forEach(button => button.classList.toggle("active", normalizeView(button.dataset.view) === state.view));
+  renderView();
+  if (state.view === "map" && state.map) window.setTimeout(() => state.map.invalidateSize(), 120);
+}
+
+function clearTerritory() {
+  state.selectedTerritory = null;
+  state.selectedCoplaId = null;
+  state.territoryTab = "summary";
+  $("#mapSearch").value = "";
+  $("#mapResults").innerHTML = "";
+  updateMapCard();
+  state.layer?.eachLayer(layer => layer.setStyle(styleFeature(false)));
+  if (state.layer) {
+    try {
+      state.map.fitBounds(state.layer.getBounds(), { padding: [24, 24] });
+    } catch {}
+  }
+  if (state.view === "territory") renderTerritoryView();
+  if (state.view === "coplas") renderCoplasView();
 }
 
 function styleFeature(selected = false) {
   return selected
-    ? { weight: 2.4, color: "#f2efe5", fillColor: "#b84a32", fillOpacity: 0.72 }
-    : { weight: 1, color: "#243b3d", fillColor: "#49706d", fillOpacity: 0.22 };
+    ? { weight: 2.5, color: "#f6f7f4", fillColor: "#315f4b", fillOpacity: 0.62 }
+    : { weight: 1, color: "#315f4b", fillColor: "#8ca99b", fillOpacity: 0.22 };
 }
 
 async function loadLayer(type = state.layerType) {
   state.layerType = type;
-  $("#map-status-text").textContent = `Cargando ${TYPE_LABELS[type]?.toLowerCase() || "capa"}...`;
+  const layerSelect = $("#mapLayer");
+  if (layerSelect) layerSelect.value = type;
+  if (!state.map || !window.L) return;
   if (state.layer) state.layer.remove();
-
   let data = await getGeoLayer(type);
   data = topoToGeo(data);
   state.layer = L.geoJSON(data, {
@@ -213,29 +290,22 @@ async function loadLayer(type = state.layerType) {
       const name = territory?.nome || getFeatureNome(feature, type);
       layer.bindTooltip(name, { sticky: true, direction: "auto" });
       layer.on("mouseover", () => {
-        if (territory?.id !== state.selectedTerritory?.id) {
-          layer.setStyle({ weight: 2, color: "#b84a32", fillOpacity: 0.42 });
-        }
+        if (territory?.id !== state.selectedTerritory?.id) layer.setStyle({ weight: 2, fillOpacity: 0.4 });
       });
       layer.on("mouseout", () => state.layer?.resetStyle(layer));
       layer.on("click", () => {
-        if (territory) selectTerritory(territory, { switchMode: true, fit: false });
+        if (territory) selectTerritory(territory, { fit: false, openCard: true });
       });
     },
   }).addTo(state.map);
-
   try {
-    state.map.fitBounds(state.layer.getBounds(), { padding: [20, 20] });
+    state.map.fitBounds(state.layer.getBounds(), { padding: [24, 24] });
   } catch {}
-  $("#map-status-text").textContent = `${TYPE_LABELS[type] || "Capa"} activa`;
 }
 
 async function selectTerritory(territory, options = {}) {
   state.selectedTerritory = territory;
-  if (options.switchMode) setMode("map");
-  const layerSelect = $("#map-layer");
   if (territory.tipo !== state.layerType) {
-    if (layerSelect) layerSelect.value = territory.tipo;
     await loadLayer(territory.tipo);
   }
   state.layer?.eachLayer(layer => {
@@ -243,488 +313,538 @@ async function selectTerritory(territory, options = {}) {
     layer.setStyle(styleFeature(found?.id === territory.id));
     if (found?.id === territory.id && options.fit !== false) {
       try {
-        state.map.flyToBounds(layer.getBounds(), { padding: [52, 52], duration: 0.45 });
+        state.map.flyToBounds(layer.getBounds(), { padding: [40, 40], duration: 0.45 });
       } catch {}
     }
   });
-  renderActiveView();
+  updateMapCard();
+  if (state.view === "territory") renderTerritoryView();
+  if (state.view === "coplas") renderCoplasView();
+  if (options.openCard) updateMapCard();
 }
 
-function renderSearch(query = "") {
-  const box = $("#search-results");
+function updateMapCard() {
+  const territory = state.selectedTerritory;
+  const ctx = placeContext(territory);
+  const clearButton = $("#clearTerritory");
+  if (clearButton) clearButton.hidden = !territory;
+  const title = $("#mapCardTitle");
+  const text = $("#mapCardText");
+  const coplaCount = $("#mapCoplaCount");
+  const pieceCount = $("#mapPieceCount");
+  const territoryCount = $("#mapTerritoryCount");
+  if (!title || !text || !coplaCount || !pieceCount || !territoryCount) return;
+  title.textContent = territory?.nome || "Galiza";
+  text.textContent = territory
+    ? `${territoryLabel(territory)} con ${ctx.coplas.length} coplas asociadas, directas ou herdadas dos seus subterritorios.`
+    : "Explora o corpus territorialmente ou emprega a busca para localizar unha parroquia, concello, copla ou peza.";
+  coplaCount.textContent = territory ? ctx.coplas.length : state.coplas.length;
+  pieceCount.textContent = territory ? ctx.pezas.length : state.pezas.length;
+  territoryCount.textContent = territory ? ctx.children.length : state.territorios.length;
+}
+
+function renderMapSearch(query = "") {
+  const results = $("#mapResults");
   const q = query.trim();
   if (!q) {
-    box.innerHTML = "";
+    results.innerHTML = "";
     return;
   }
   const territoryHits = searchTerritories(state.territorios, q).slice(0, 7);
   const textQ = normalizeText(q);
-  const coplaHits = state.coplas.filter(copla => {
-    const haystack = [
-      copla.text,
-      copla.incipit,
-      copla.notes,
-      (copla.tags || []).join(" "),
-      (copla.versions || []).map(version => `${version.text} ${version.notes || ""}`).join(" "),
-    ].join(" ");
-    return normalizeText(haystack).includes(textQ);
-  }).slice(0, 5);
-
-  box.innerHTML = `
+  const coplaHits = state.coplas.filter(copla => normalizeText(coplaHaystack(copla)).includes(textQ)).slice(0, 5);
+  results.innerHTML = `
     ${territoryHits.map(item => `
-      <button type="button" class="search-hit" data-territory-id="${item.id}">
+      <button type="button" data-territory-id="${item.id}">
         <strong>${escapeHtml(item.nome)}</strong>
-        <span>${escapeHtml(territoryLine(item))}</span>
+        <span>${escapeHtml(territoryLabel(item))}</span>
       </button>
     `).join("")}
     ${coplaHits.map(item => `
-      <button type="button" class="search-hit" data-copla-id="${item.id}">
-        <strong>${escapeHtml(item.incipit || `Copla #${item.id}`)}</strong>
+      <button type="button" data-copla-id="${item.id}">
+        <strong>${escapeHtml(coplaTitle(item))}</strong>
         <span>${escapeHtml(coplaPlaceLabel(item))}</span>
       </button>
     `).join("")}
-    ${!territoryHits.length && !coplaHits.length ? `<p class="quiet">Sen resultados.</p>` : ""}
+    ${!territoryHits.length && !coplaHits.length ? `<p class="muted">Sen resultados.</p>` : ""}
   `;
+  bindResultButtons(results);
+}
 
-  all("[data-territory-id]", box).forEach(button => {
+function bindResultButtons(root = document) {
+  all("[data-territory-id]", root).forEach(button => {
     button.addEventListener("click", () => {
       const territory = state.territorios.find(item => item.id === button.dataset.territoryId);
-      if (territory) selectTerritory(territory, { switchMode: true });
+      if (territory) {
+        if (button.closest("#territorySearchResults")) state.territoryQuery = "";
+        selectTerritory(territory);
+        setView("territory");
+      }
     });
   });
-  all("[data-copla-id]", box).forEach(button => {
+  all("[data-copla-id]", root).forEach(button => {
     button.addEventListener("click", () => {
       state.selectedCoplaId = Number(button.dataset.coplaId);
-      setMode("coplas");
+      setView("coplas");
+      openCoplaDrawer(state.selectedCoplaId);
     });
   });
-}
-
-function renderPlaceFinder() {
-  return `
-    <section class="place-finder">
-      <label for="place-search">Buscar lugar</label>
-      <div class="place-search-row">
-        <input id="place-search" type="search" placeholder="Malpica, O Temple, Barro de Arén...">
-      </div>
-      <div id="place-search-results" class="place-search-results"></div>
-    </section>
-  `;
-}
-
-function bindPlaceFinder(root) {
-  const input = $("#place-search", root);
-  const results = $("#place-search-results", root);
-  if (!input || !results) return;
-
-  input.addEventListener("input", () => {
-    const query = input.value.trim();
-    if (!query) {
-      results.innerHTML = "";
-      return;
-    }
-    const matches = searchTerritories(state.territorios, query).slice(0, 12);
-    results.innerHTML = matches.map(item => `
-      <button type="button" data-place-result="${item.id}">
-        <strong>${escapeHtml(item.nome)}</strong>
-        <span>${escapeHtml(TYPE_LABELS[item.tipo] || item.tipo)}</span>
-      </button>
-    `).join("") || `<p class="quiet">Sen resultados.</p>`;
-    all("[data-place-result]", results).forEach(button => {
-      button.addEventListener("click", () => {
-        const territory = state.territorios.find(item => item.id === button.dataset.placeResult);
-        if (territory) selectTerritory(territory, { switchMode: true });
-      });
-    });
-  });
-
-  input.addEventListener("keydown", event => {
-    if (event.key !== "Enter") return;
-    const first = searchTerritories(state.territorios, input.value)[0];
-    if (first) selectTerritory(first, { switchMode: true });
-  });
-}
-
-function renderPlaceView() {
-  const view = $("#place-view");
-  const territory = state.selectedTerritory;
-  const ctx = placeContext(territory);
-  if (!territory) {
-    view.innerHTML = `
-      <div class="view-head">
-        <p class="micro-label">Mapa</p>
-        <h2>Escolle un punto do atlas</h2>
-        <p class="quiet">O territorio é unha porta de entrada, non unha gaiola: tamén hai coplas xerais, sen adscrición e variantes textuais.</p>
-      </div>
-      ${renderPlaceFinder()}
-      <div class="metric-grid">
-        <div class="metric"><strong>${state.territorios.length}</strong><span>lugares</span></div>
-        <div class="metric"><strong>${state.coplas.length}</strong><span>coplas</span></div>
-        <div class="metric"><strong>${state.media.length}</strong><span>media</span></div>
-      </div>
-      <div class="future-strip">
-        <strong>PMV musical</strong>
-        <span>Cada lugar reserva espazo para melodías: mp3, mp4, gravacións, vídeos e ligazóns tratadas segundo a fonte.</span>
-      </div>
-    `;
-    bindPlaceFinder(view);
-    return;
-  }
-
-  const direct = ctx.coplas.filter(copla => (copla.territories || []).some(item => item.id === territory.id)).length;
-  const inherited = Math.max(ctx.coplas.length - direct, 0);
-  const directCoplas = ctx.coplas.filter(copla => (copla.territories || []).some(item => item.id === territory.id));
-  const inheritedCoplas = ctx.coplas.filter(copla => !(copla.territories || []).some(item => item.id === territory.id));
-  view.innerHTML = `
-    <div class="view-head">
-      <p class="micro-label">${escapeHtml(TYPE_LABELS[territory.tipo] || territory.tipo)}</p>
-      <h2>${escapeHtml(territory.nome)}</h2>
-      <p class="quiet">${direct} directas · ${inherited} herdadas</p>
-    </div>
-    ${renderPlaceFinder()}
-    <div class="metric-grid">
-      <div class="metric"><strong>${ctx.coplas.length}</strong><span>coplas</span></div>
-      <div class="metric"><strong>${ctx.children.length}</strong><span>subterritorios</span></div>
-      <div class="metric"><strong>${ctx.media.length}</strong><span>media</span></div>
-    </div>
-    <section class="panel-block">
-      <h3>Xerarquía</h3>
-      <div class="chip-row">${ctx.hierarchy.map(item => `<button class="chip" type="button" data-territory-id="${item.id}">${escapeHtml(item.nome)}</button>`).join("")}</div>
-    </section>
-    <section class="panel-block">
-      <div class="block-title">
-        <h3>Coplas do lugar</h3>
-        <button class="text-button" type="button" data-mode-jump="coplas">Ver en Coplas</button>
-      </div>
-      <div class="territory-coplas">
-        ${directCoplas.length ? `
-          <div class="territory-copla-group">
-            <p class="micro-label">Directas</p>
-            ${directCoplas.slice(0, 6).map(copla => placeCoplaRow(copla)).join("")}
-          </div>
-        ` : ""}
-        ${inheritedCoplas.length ? `
-          <div class="territory-copla-group">
-            <p class="micro-label">Herdadas dos subterritorios</p>
-            ${inheritedCoplas.slice(0, 6).map(copla => placeCoplaRow(copla)).join("")}
-          </div>
-        ` : ""}
-        ${!ctx.coplas.length ? `<p class="quiet">Aínda non hai coplas neste lugar.</p>` : ""}
-      </div>
-    </section>
-    <section class="panel-block">
-      <h3>Melodías e media</h3>
-      <div class="media-lanes">
-        <article><strong>Melodías locais</strong><span>Preparado para mp3/mp4, gravacións de campo e vídeos cantados.</span></article>
-        <article><strong>Ligazóns tratadas</strong><span>YouTube, Spotify, webs externas e arquivos propios terán visualización diferenciada.</span></article>
-        <article><strong>Agora mesmo</strong><span>${ctx.media.length ? `${ctx.media.length} recursos ligados` : "sen media ligada"}</span></article>
-      </div>
-    </section>
-    <section class="panel-block">
-      <h3>Subterritorios</h3>
-      <div class="place-list">${ctx.children.slice(0, 12).map(item => `<button type="button" data-territory-id="${item.id}"><strong>${escapeHtml(item.nome)}</strong><span>${escapeHtml(TYPE_LABELS[item.tipo] || item.tipo)}</span></button>`).join("") || `<p class="quiet">Sen subterritorios neste nivel.</p>`}</div>
-    </section>
-  `;
-
-  all("[data-territory-id]", view).forEach(button => {
-    button.addEventListener("click", () => {
-      const next = state.territorios.find(item => item.id === button.dataset.territoryId);
-      if (next) selectTerritory(next, { switchMode: true });
-    });
-  });
-  all("[data-mode-jump]", view).forEach(button => button.addEventListener("click", () => setMode(button.dataset.modeJump)));
-  bindPlaceFinder(view);
-  bindCoplaButtons(view);
-}
-
-function placeCoplaRow(copla) {
-  const excerpt = String(copla.text || "").replace(/\s+/g, " ").trim();
-  return `
-    <article class="territory-copla-row">
-      <button type="button" class="copla-title" data-open-copla="${copla.id}">${escapeHtml(copla.incipit || `Copla #${copla.id}`)}</button>
-      <p>${escapeHtml(excerpt)}</p>
-      <div class="copla-meta">
-        <span>${escapeHtml(coplaPlaceLabel(copla))}</span>
-        <span>${(copla.versions || []).length ? `${(copla.versions || []).length} variantes` : "texto único"}</span>
-      </div>
-      <div class="unit-actions">
-        <button type="button" data-add-to-builder="${copla.id}">Engadir á peza</button>
-        <button type="button" data-open-copla="${copla.id}">Ler</button>
-      </div>
-    </article>
-  `;
 }
 
 function coplaCard(copla, options = {}) {
   const versionCount = (copla.versions || []).length;
-  const tags = (copla.tags || []).slice(0, 4);
   return `
-    <article class="copla-unit ${options.compact ? "is-compact" : ""} ${options.gallery ? "is-gallery" : ""}">
-      <div class="copla-topline">
-        <button type="button" class="copla-title" data-open-copla="${copla.id}">${escapeHtml(copla.incipit || `Copla #${copla.id}`)}</button>
-        <span class="state-badge">${escapeHtml(copla.territory_state || "assigned")}</span>
+    <article class="gallery-card ${options.list ? "as-list" : ""}" tabindex="0" role="button" data-open-copla="${copla.id}">
+      <div>
+        <div class="gallery-top">
+          <span class="gallery-place">${escapeHtml(coplaPlaceLabel(copla))}</span>
+          <button class="mini-add icon-add" type="button" data-add-copla="${copla.id}" aria-label="Engadir á peza">+</button>
+        </div>
+        <h2 class="gallery-title">${escapeHtml(coplaTitle(copla))}</h2>
+        <div class="gallery-text">${nl2br(copla.text || "")}</div>
       </div>
-      <div class="copla-body">${nl2br(copla.text || "")}</div>
-      <div class="copla-meta"><span>${escapeHtml(coplaPlaceLabel(copla))}</span><span>${versionCount ? `${versionCount} variantes` : "texto único"}</span></div>
-      ${tags.length ? `<div class="chip-row">${tags.map(tag => `<span class="tag-chip">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
-      <div class="unit-actions">
-        <button type="button" data-add-to-builder="${copla.id}">Engadir á peza</button>
-        <button type="button" data-open-copla="${copla.id}">Contrastar</button>
+      <div class="gallery-bottom">
+        <div class="meta">
+          <span class="tag">${versionCount ? `${versionCount} variantes` : "texto único"}</span>
+        </div>
+        <span class="muted">Preme para abrir a ficha textual</span>
       </div>
     </article>
   `;
 }
 
-function corpusMatches(copla, query) {
-  const q = normalizeText(query || "");
-  if (!q) return true;
-  const haystack = [
-    copla.text,
-    copla.incipit,
-    copla.notes,
-    coplaPlaceLabel(copla),
-    (copla.tags || []).join(" "),
-    (copla.versions || []).map(version => `${version.text} ${version.label || ""} ${version.notes || ""}`).join(" "),
-  ].join(" ");
-  return normalizeText(haystack).includes(q);
+function filteredCoplas() {
+  const scoped = state.selectedTerritory ? placeContext().coplas : state.coplas;
+  const q = normalizeText(state.coplaQuery);
+  return scoped.filter(copla => !q || normalizeText(coplaHaystack(copla)).includes(q));
 }
 
-function currentCorpusItems() {
-  const ctx = placeContext();
-  const scoped = state.selectedTerritory ? ctx.coplas : state.coplas;
-  return scoped.filter(copla => {
-    const stateOk = !state.corpusStateFilter || copla.territory_state === state.corpusStateFilter;
-    return stateOk && corpusMatches(copla, state.corpusQuery);
-  });
+function coplaStreamClass() {
+  return state.coplaViewMode === "list" ? "copla-list" : state.coplaViewMode === "gallery" ? "copla-gallery gallery-wide" : "copla-gallery";
 }
 
-function renderCorpusList(view) {
-  const stream = $(".copla-stream", view);
-  const count = $("#corpus-count", view);
-  if (!stream) return;
-  const items = currentCorpusItems();
-  stream.className = `copla-stream is-${state.coplaViewMode}`;
-  stream.innerHTML = items.map(copla => coplaCard(copla, {
-    compact: state.coplaViewMode !== "list",
-    gallery: state.coplaViewMode === "gallery",
-  })).join("") || `<p class="quiet">Sen coplas neste ámbito.</p>`;
-  if (count) count.textContent = `${items.length} coplas`;
-  all("[data-view-mode]", view).forEach(button => button.classList.toggle("is-active", button.dataset.viewMode === state.coplaViewMode));
-  all("[data-filter-state]", view).forEach(button => button.classList.toggle("is-active", button.dataset.filterState === state.corpusStateFilter));
-  bindCoplaButtons(view);
+function updateCoplasResults(root = $("#view-coplas")) {
+  const items = filteredCoplas();
+  const list = $("#coplaList", root);
+  const count = $("#coplaResultCount", root);
+  const scope = $("#coplaResultScope", root);
+  if (count) count.textContent = `Mostrando ${items.length} coplas`;
+  if (scope) scope.textContent = state.selectedTerritory ? "inclúe subterritorios" : "arquivo completo";
+  if (list) {
+    list.className = coplaStreamClass();
+    list.innerHTML = items.map(copla => coplaCard(copla, { list: state.coplaViewMode === "list" })).join("") || `<p class="muted">Sen coplas para esta consulta.</p>`;
+    bindCoplaActions(list);
+  }
+  all("[data-copla-view]", root).forEach(button => button.classList.toggle("active", button.dataset.coplaView === state.coplaViewMode));
+  const allChip = $("[data-copla-total]", root);
+  if (allChip) allChip.textContent = `Todas · ${items.length}`;
 }
 
-function renderCorpusView() {
-  const view = $("#corpus-view");
-  const selected = state.selectedCoplaId ? state.coplas.find(item => Number(item.id) === Number(state.selectedCoplaId)) : null;
-  const assigned = state.coplas.filter(item => item.territory_state === "assigned").length;
-  const unassigned = state.coplas.filter(item => item.territory_state === "unassigned").length;
-  const general = state.coplas.filter(item => item.territory_state === "general").length;
-  const baseCount = state.selectedTerritory ? placeContext().coplas.length : state.coplas.length;
+function renderCoplasView() {
+  const view = $("#view-coplas");
+  const items = filteredCoplas();
   view.innerHTML = `
-    <div class="view-head">
-      <p class="micro-label">Coplas</p>
-      <h2>${state.selectedTerritory ? `Coplas de ${escapeHtml(state.selectedTerritory.nome)}` : "Arquivo textual"}</h2>
-      <p class="quiet">Unha copla é unha unidade textual con versións, adscrición territorial e usos posibles.</p>
-    </div>
-    <div class="metric-grid">
-      <button class="metric metric-button" type="button" data-filter-state=""><strong>${baseCount}</strong><span>todas</span></button>
-      <button class="metric metric-button" type="button" data-filter-state="assigned"><strong>${assigned}</strong><span>asignadas</span></button>
-      <button class="metric metric-button" type="button" data-filter-state="unassigned"><strong>${unassigned}</strong><span>sen lugar</span></button>
-      <button class="metric metric-button" type="button" data-filter-state="general"><strong>${general}</strong><span>xerais</span></button>
-    </div>
-    ${selected ? renderCoplaDetail(selected) : ""}
-    <section class="panel-block">
-      <div class="corpus-toolbar">
-        <label class="corpus-search"><span class="visually-hidden">Buscar coplas</span><input id="corpus-search" type="search" value="${escapeHtml(state.corpusQuery)}" placeholder="Buscar por verso, íncipit, territorio, etiqueta..."></label>
-        <div class="view-switcher" aria-label="Tipo de visualización">
-          <button type="button" data-view-mode="grid">Grade</button>
-          <button type="button" data-view-mode="list">Lista</button>
-          <button type="button" data-view-mode="gallery">Galería</button>
+    <div class="page">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">Corpus</div>
+          <h1>${state.selectedTerritory ? `Coplas de ${escapeHtml(state.selectedTerritory.nome)}` : "Coplas"}</h1>
+          <p>Consulta transversal do repertorio. A grade é a vista por defecto; lista e galería permiten cambiar o ritmo de lectura.</p>
+        </div>
+        <button class="btn primary" type="button" data-view="submit">+ Nova copla</button>
+      </div>
+      <div class="toolbar">
+        <div class="searchbox"><span>⌕</span><input id="coplaSearch" type="search" value="${escapeHtml(state.coplaQuery)}" placeholder="Buscar por verso, íncipit, territorio..."></div>
+        <select id="coplaScope">
+          <option value="current" ${state.selectedTerritory ? "selected" : ""}>Ámbito actual</option>
+          <option value="all" ${state.selectedTerritory ? "" : "selected"}>Todo o corpus</option>
+        </select>
+        <div class="view-toggle">
+          <button class="chip ${state.coplaViewMode === "grid" ? "active" : ""}" type="button" data-copla-view="grid">Grade</button>
+          <button class="chip ${state.coplaViewMode === "list" ? "active" : ""}" type="button" data-copla-view="list">Lista</button>
+          <button class="chip ${state.coplaViewMode === "gallery" ? "active" : ""}" type="button" data-copla-view="gallery">Galería</button>
         </div>
       </div>
-      <div class="block-title"><h3 id="corpus-count">0 coplas</h3><span class="quiet">${state.selectedTerritory ? "inclúe herdadas dos subterritorios" : "todo o corpus exportado"}</span></div>
-      <div class="copla-stream"></div>
-    </section>
-  `;
-  $("#corpus-search", view)?.addEventListener("input", event => {
-    state.corpusQuery = event.target.value;
-    renderCorpusList(view);
-  });
-  all("[data-view-mode]", view).forEach(button => button.addEventListener("click", () => {
-    state.coplaViewMode = button.dataset.viewMode;
-    renderCorpusList(view);
-  }));
-  all("[data-filter-state]", view).forEach(button => {
-    button.addEventListener("click", () => {
-      state.corpusStateFilter = button.dataset.filterState;
-      renderCorpusList(view);
-    });
-  });
-  renderCorpusList(view);
-}
-
-function renderCoplaDetail(copla) {
-  return `
-    <section class="copla-detail">
-      <div class="block-title"><h3>${escapeHtml(copla.incipit || `Copla #${copla.id}`)}</h3><button class="text-button" type="button" data-close-copla>Pechar</button></div>
-      <div class="comparison-grid">
-        <article><p class="micro-label">Texto canónico</p><div class="copla-body">${nl2br(copla.text || "")}</div></article>
-        <article><p class="micro-label">Variantes</p>${(copla.versions || []).map(version => `<div class="variant"><strong>${escapeHtml(version.label || version.incipit || "Versión")}</strong><div>${nl2br(version.text || "")}</div>${version.notes ? `<span>${escapeHtml(version.notes)}</span>` : ""}</div>`).join("") || `<p class="quiet">Sen variantes rexistradas.</p>`}</article>
+      <div class="chips">
+        <button class="chip active" type="button" data-copla-total>Todas · ${items.length}</button>
+        <button class="chip" type="button" data-state-filter="assigned">Asignadas</button>
+        <button class="chip" type="button" data-state-filter="unassigned">Sen lugar</button>
+        <button class="chip" type="button" data-state-filter="general">Galiza xeral</button>
       </div>
-    </section>
+      <div class="results-row"><span id="coplaResultCount" class="muted">Mostrando ${items.length} coplas</span><span id="coplaResultScope" class="muted">${state.selectedTerritory ? "inclúe subterritorios" : "arquivo completo"}</span></div>
+      <div id="coplaList" class="${coplaStreamClass()}">
+        ${items.map(copla => coplaCard(copla, { list: state.coplaViewMode === "list" })).join("") || `<p class="muted">Sen coplas para esta consulta.</p>`}
+      </div>
+    </div>
+  `;
+  $("#coplaSearch")?.addEventListener("input", event => {
+    state.coplaQuery = event.target.value;
+    updateCoplasResults(view);
+  });
+  $("#coplaScope")?.addEventListener("change", event => {
+    if (event.target.value === "all") state.selectedTerritory = null;
+    renderCoplasView();
+  });
+  all("[data-copla-view]", view).forEach(button => button.addEventListener("click", () => {
+    state.coplaViewMode = button.dataset.coplaView;
+    updateCoplasResults(view);
+  }));
+  all("[data-state-filter]", view).forEach(button => button.addEventListener("click", () => {
+    state.coplaQuery = button.dataset.stateFilter;
+    renderCoplasView();
+  }));
+  bindCoplaActions(view);
+}
+
+function bindCoplaActions(root = document) {
+  bindResultButtons(root);
+  all("[data-open-copla]", root).forEach(card => {
+    card.addEventListener("click", event => {
+      if (event.target.closest("button, a, select, input, textarea")) return;
+      openCoplaDrawer(Number(card.dataset.openCopla));
+    });
+    card.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openCoplaDrawer(Number(card.dataset.openCopla));
+      }
+    });
+  });
+  all("[data-add-copla]", root).forEach(button => button.addEventListener("click", event => {
+    event.stopPropagation();
+    const copla = state.coplas.find(item => Number(item.id) === Number(button.dataset.addCopla));
+    if (!copla) return;
+    const draft = loadDraft();
+    if (state.selectedTerritory && !draft.territoryId) draft.territoryId = state.selectedTerritory.id;
+    if (state.selectedTerritory && !draft.title) draft.title = state.selectedTerritory.nome;
+    const exists = draft.sections.some(section => section.coplas.some(item => Number(item.id) === Number(copla.id)));
+    if (!exists) {
+      draft.sections[0].coplas.push({
+        id: copla.id,
+        incipit: copla.incipit || "",
+        text: copla.text || "",
+        territory: coplaPlaceLabel(copla),
+      });
+    }
+    saveDraft(draft);
+    const original = button.dataset.originalText || button.textContent;
+    button.dataset.originalText = original;
+    button.textContent = exists ? "✓" : (original.trim() === "+" ? "+" : "Engadida");
+    button.classList.add("is-added");
+    window.setTimeout(() => {
+      button.textContent = button.dataset.originalText;
+      button.classList.remove("is-added");
+    }, 1000);
+  }));
+}
+
+function openCoplaDrawer(coplaId) {
+  const copla = state.coplas.find(item => Number(item.id) === Number(coplaId));
+  const drawer = $("#coplaDrawer");
+  if (!copla || !drawer) return;
+  const territories = (copla.territories || []).map(item => `${item.nome} (${territoryLabel(item)})`).join(", ");
+  drawer.hidden = false;
+  drawer.innerHTML = `
+    <div class="drawer-scrim" data-close-drawer></div>
+    <aside class="drawer-panel" role="dialog" aria-modal="true" aria-label="Ficha da copla">
+      <button class="card-close" type="button" data-close-drawer aria-label="Pechar">×</button>
+      <div class="eyebrow">Ficha textual</div>
+      <h2>${escapeHtml(copla.incipit || "Copla")}</h2>
+      <div class="gallery-text">${nl2br(copla.text || "")}</div>
+      <div class="drawer-section">
+        <h3>Territorio</h3>
+        <p class="muted">${escapeHtml(territories || coplaPlaceLabel(copla))}</p>
+      </div>
+      <div class="drawer-section">
+        <h3>Variantes</h3>
+        ${(copla.versions || []).map(version => `
+          <div class="variant">
+            <strong>${escapeHtml(version.label || version.incipit || "Variante")}</strong>
+            <div>${nl2br(version.text || "")}</div>
+            ${version.notes ? `<p class="muted">${escapeHtml(version.notes)}</p>` : ""}
+          </div>
+        `).join("") || `<p class="muted">Sen variantes rexistradas.</p>`}
+      </div>
+      <div class="drawer-section">
+        <h3>Notas e fonte</h3>
+        <p class="muted">${escapeHtml(copla.notes || "Sen notas rexistradas.")}</p>
+      </div>
+      <div class="meta">${(copla.tags || []).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>
+      <button class="btn primary drawer-add" type="button" data-add-copla="${copla.id}" aria-label="Engadir á peza">+</button>
+    </aside>
+  `;
+  all("[data-close-drawer]", drawer).forEach(item => item.addEventListener("click", closeCoplaDrawer));
+  bindCoplaActions(drawer);
+}
+
+function closeCoplaDrawer() {
+  const drawer = $("#coplaDrawer");
+  if (!drawer) return;
+  drawer.hidden = true;
+  drawer.innerHTML = "";
+}
+
+function pieceTerritory() {
+  const draft = loadDraft();
+  return state.territorios.find(item => item.id === draft.territoryId) || state.selectedTerritory || null;
+}
+
+function filteredPieceLibrary() {
+  const territory = pieceTerritory();
+  const scoped = territory ? filterCoplasByTerritory(state.coplas, getDescendantIds(territory, state.territorios)) : state.coplas;
+  const q = normalizeText(state.pieceLibraryQuery);
+  return scoped.filter(copla => !q || normalizeText(coplaHaystack(copla)).includes(q)).slice(0, 80);
+}
+
+function pieceHaystack(piece) {
+  return [
+    piece.title,
+    piece.titulo,
+    piece.author,
+    piece.autoria,
+    piece.description,
+    piece.notes,
+    piece.context,
+    piece.territory_id,
+    piece.context_territory_id,
+  ].join(" ");
+}
+
+function filteredPieceRepository() {
+  const territory = pieceTerritory();
+  const scoped = territory ? filterPiecesByTerritory(state.pezas, getDescendantIds(territory, state.territorios), state.coplas) : state.pezas;
+  const q = normalizeText(state.pieceRepositoryQuery);
+  return scoped.filter(piece => !q || normalizeText(pieceHaystack(piece)).includes(q));
+}
+
+function pieceCard(piece) {
+  const title = piece.title || piece.titulo || "Peza sen título";
+  const author = piece.author || piece.autoria || piece.creator || "Sen autoría";
+  const sections = piece.sections || piece.parts || [];
+  const coplaTotal = sections.reduce((sum, section) => sum + (section.coplas || section.items || []).length, 0);
+  return `
+    <article class="piece-card">
+      <div>
+        <div class="eyebrow">Peza gardada</div>
+        <h2>${escapeHtml(title)}</h2>
+        <p>${escapeHtml(piece.description || piece.notes || "Mapa de referencias de coplas preparado para consulta e exportación.")}</p>
+      </div>
+      <div class="meta">
+        <span class="tag place">${escapeHtml(author)}</span>
+        <span class="tag">${coplaTotal || piece.copla_count || 0} coplas</span>
+        ${sections.length ? `<span class="tag">${sections.length} partes</span>` : ""}
+      </div>
+    </article>
   `;
 }
 
-function bindCoplaButtons(root = document) {
-  all("[data-open-copla]", root).forEach(button => {
-    button.addEventListener("click", () => {
-      state.selectedCoplaId = Number(button.dataset.openCopla);
-      setMode("coplas");
-    });
-  });
-  all("[data-close-copla]", root).forEach(button => {
-    button.addEventListener("click", () => {
-      state.selectedCoplaId = null;
-      renderCorpusView();
-    });
-  });
-  all("[data-add-to-builder]", root).forEach(button => {
-    button.addEventListener("click", () => {
-      const copla = state.coplas.find(item => Number(item.id) === Number(button.dataset.addToBuilder));
-      if (!copla) return;
-      const draft = loadDraft();
-      if (state.selectedTerritory && !draft.territoryId) draft.territoryId = state.selectedTerritory.id;
-      if (state.selectedTerritory && !draft.title) draft.title = state.selectedTerritory.nome;
-      const first = draft.sections[0];
-      const alreadyExists = draft.sections.some(section => section.coplas.some(item => Number(item.id) === Number(copla.id)));
-      if (!draft.sections.some(section => section.coplas.some(item => Number(item.id) === Number(copla.id)))) {
-        first.coplas.push({ id: copla.id, incipit: copla.incipit || "", text: copla.text || "", territory: coplaPlaceLabel(copla) });
-      }
-      saveDraft(draft);
-      button.textContent = alreadyExists ? "Xa está na peza" : "Engadida";
-      button.disabled = true;
-      window.setTimeout(() => {
-        button.textContent = "Engadir á peza";
-        button.disabled = false;
-      }, 1100);
-    });
-  });
+function renderPieceTerritoryResults(root = $("#view-pieces")) {
+  const results = $("#pieceTerritoryResults", root);
+  if (!results) return;
+  const query = state.pieceTerritoryQuery.trim();
+  if (!query) {
+    results.innerHTML = "";
+    return;
+  }
+  const matches = searchTerritories(state.territorios, query).slice(0, 10);
+  results.innerHTML = matches.map(item => `
+    <button type="button" data-piece-territory="${item.id}">
+      <strong>${escapeHtml(item.nome)}</strong>
+      <span>${escapeHtml(territoryLabel(item))}</span>
+    </button>
+  `).join("") || `<p class="muted">Sen resultados.</p>`;
+  all("[data-piece-territory]", results).forEach(button => button.addEventListener("click", async () => {
+    const territory = state.territorios.find(item => item.id === button.dataset.pieceTerritory);
+    if (!territory) return;
+    const draft = loadDraft();
+    draft.territoryId = territory.id;
+    if (!draft.title) draft.title = territory.nome;
+    saveDraft(draft);
+    state.pieceTerritoryQuery = "";
+    await selectTerritory(territory);
+    renderPiecesView();
+  }));
 }
 
-function renderBuilderView() {
-  const view = $("#builder-view");
+function updatePieceLibrary(root = $("#view-pieces")) {
+  const library = filteredPieceLibrary();
+  const list = $("#pieceLibraryList", root);
+  const count = $("#pieceLibraryCount", root);
+  if (count) count.textContent = `${library.length} coplas`;
+  if (!list) return;
+  list.innerHTML = library.map(copla => `
+    <article class="mini-copla">
+      <h3>${escapeHtml(coplaTitle(copla))}</h3>
+      <p>${nl2br(copla.text || "")}</p>
+      <div class="mini-bottom">
+        <span class="tag place">${escapeHtml(coplaPlaceLabel(copla))}</span>
+        <button class="mini-add" type="button" data-add-copla="${copla.id}">+</button>
+      </div>
+    </article>
+  `).join("") || `<p class="muted">Sen coplas no repertorio.</p>`;
+  bindCoplaActions(list);
+}
+
+function updatePieceRepository(root = $("#view-pieces")) {
+  const repo = filteredPieceRepository();
+  const list = $("#pieceRepositoryList", root);
+  const count = $("#pieceRepositoryCount", root);
+  if (count) count.textContent = `${repo.length} pezas`;
+  if (!list) return;
+  list.innerHTML = repo.map(pieceCard).join("") || `<article class="panel empty-panel"><p class="muted">Aínda non hai pezas gardadas neste ámbito. Cando se publique unha peza, aparecerá aquí como mapa de referencias.</p></article>`;
+}
+
+function renderPiecesView() {
+  const view = $("#view-pieces");
   const draft = loadDraft();
-  const territory = state.territorios.find(item => item.id === draft.territoryId) || state.selectedTerritory;
-  const total = draft.sections.reduce((sum, section) => sum + section.coplas.length, 0);
+  const library = filteredPieceLibrary();
+  const repo = filteredPieceRepository();
+  const total = draftCount(draft);
+  const territory = pieceTerritory();
   const rhythmOptions = RHYTHMS.map(value => `<option value="${value}">${value}</option>`).join("");
   view.innerHTML = `
-    <div class="view-head"><p class="micro-label">Pezas</p><h2>Carriño da peza</h2><p class="quiet">As coplas engadidas durante a exploración quedan aquí para ordenar, separar por ritmo e preparar a folla de canto.</p></div>
-    <section class="panel-block">
-      <div class="form-grid">
-        <label>Título<input id="builder-title" type="text" value="${escapeHtml(draft.title || territory?.nome || "")}" placeholder="Malpica"></label>
-        <label>Autoría da selección<input id="builder-author" type="text" value="${escapeHtml(draft.author || "")}" placeholder="Nome da persoa que monta a letra"></label>
+    <div class="page">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">Pezas</div>
+          <h1>Carriño da peza</h1>
+          <p>Engade coplas mentres exploras e constrúe aquí unha peza con partes, ritmo, orde e saída para canto.</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn" type="button" id="clearPiece">Baleirar</button>
+          <button class="btn" type="button" id="downloadPiece">Descargar estrutura</button>
+          <button class="btn primary" type="button" id="openA4">Folla A4 / PDF</button>
+        </div>
       </div>
-      <div class="cart-summary"><strong>${total}</strong><span>coplas no carriño${territory ? ` · ${escapeHtml(territory.nome)}` : ""}</span><button type="button" class="text-button" data-mode-jump="coplas">Engadir máis</button></div>
-    </section>
-    <section class="panel-block">
-      <div class="block-title"><h3>Partes</h3><button type="button" class="text-button" id="add-section">Engadir parte</button></div>
-      <div class="builder-sections">
-        ${draft.sections.map(section => `<article class="builder-section" data-section-id="${section.id}">
-          <div class="section-line"><select data-section-label="${section.id}">${rhythmOptions}</select><button type="button" data-remove-section="${section.id}">Quitar</button></div>
-          <div class="copla-stack" data-drop-section="${section.id}">
-            ${section.coplas.map(item => `
-              <article class="builder-copla" draggable="true" data-drag-copla="${item.id}" data-section="${section.id}" tabindex="0">
-                <strong>${escapeHtml(item.incipit || `Copla #${item.id}`)}</strong>
-                <span>${escapeHtml(item.territory || "")}</span>
-                <div class="builder-copla-preview">${nl2br(item.text || "")}</div>
-                <div class="unit-actions">
-                  <button type="button" data-up="${item.id}" data-section="${section.id}">Subir</button>
-                  <button type="button" data-down="${item.id}" data-section="${section.id}">Baixar</button>
-                  <button type="button" data-remove-copla="${item.id}">Quitar</button>
+      <div class="toolbar piece-scopebar">
+        <div class="searchbox"><span>⌕</span><input id="pieceTerritorySearch" type="search" value="${escapeHtml(state.pieceTerritoryQuery)}" placeholder="Centrar peza nun territorio..."></div>
+        ${territory ? `<button class="btn" type="button" id="clearPieceTerritory">Limpar territorio: ${escapeHtml(territory.nome)}</button>` : `<span class="muted">Sen territorio de traballo.</span>`}
+      </div>
+      <div id="pieceTerritoryResults" class="territory-results compact"></div>
+      <div class="piece-layout">
+        <section class="panel">
+          <div class="section-title"><h2>Repertorio</h2><span id="pieceLibraryCount" class="muted">${library.length} coplas</span></div>
+          <div class="toolbar"><div class="searchbox"><span>⌕</span><input id="pieceSearch" type="search" value="${escapeHtml(state.pieceLibraryQuery)}" placeholder="Buscar coplas para engadir..."></div></div>
+          <div id="pieceLibraryList" class="library-list">
+            ${library.map(copla => `
+              <article class="mini-copla">
+                <h3>${escapeHtml(coplaTitle(copla))}</h3>
+                <p>${nl2br(copla.text || "")}</p>
+                <div class="mini-bottom">
+                  <span class="tag place">${escapeHtml(coplaPlaceLabel(copla))}</span>
+                  <button class="mini-add" type="button" data-add-copla="${copla.id}">+</button>
                 </div>
               </article>
-            `).join("") || `<p class="quiet">Engade coplas desde Mapa ou Coplas, ou arrastra aquí desde outra parte.</p>`}
+            `).join("") || `<p class="muted">Sen coplas no repertorio.</p>`}
           </div>
-        </article>`).join("")}
+        </section>
+        <section class="piece-editor">
+          <div class="cart-kpi"><strong>${total}</strong><span>coplas no carriño${territory ? ` · ${escapeHtml(territory.nome)}` : ""}</span></div>
+          <div class="formgrid">
+            <div class="field full"><label>Título da peza</label><input id="pieceTitle" type="text" value="${escapeHtml(draft.title || territory?.nome || "")}" placeholder="Foliada de Malpica"></div>
+            <div class="field"><label>Autoría da selección</label><input id="pieceAuthor" type="text" value="${escapeHtml(draft.author || "")}" placeholder="Nome"></div>
+            <div class="field"><label>Estado</label><select><option>Borrador</option><option>Revisada</option><option>Publicada</option></select></div>
+          </div>
+          <div class="sequence">
+            <div class="sequence-head"><div><div class="eyebrow">Estrutura</div><h2>Partes e ritmos</h2></div><button class="btn" type="button" id="addSection">Engadir parte</button></div>
+            <div class="builder-sections">
+              ${draft.sections.map(section => `
+                <article class="builder-section" data-section-id="${section.id}">
+                  <div class="section-line">
+                    <select data-section-label="${section.id}">${rhythmOptions}</select>
+                    <button type="button" data-remove-section="${section.id}">Quitar</button>
+                  </div>
+                  <div class="sequence-list" data-drop-section="${section.id}">
+                    ${section.coplas.map(item => `
+                      <article class="seq-item" draggable="true" data-drag-copla="${item.id}" data-section="${section.id}">
+                        <div class="drag">☷</div>
+                        <div>
+                          <div class="seq-text">${escapeHtml(item.incipit || firstLine(item.text) || "Copla sen íncipit")}</div>
+                          <div class="seq-preview">${nl2br(item.text || "")}</div>
+                          <div class="meta"><span class="tag place">${escapeHtml(item.territory || "")}</span></div>
+                        </div>
+                        <div class="seq-tools"><button type="button" data-remove-cart="${item.id}">×</button></div>
+                      </article>
+                    `).join("") || `<p class="muted">Engade coplas ou arrastra aquí desde outra parte.</p>`}
+                  </div>
+                </article>
+              `).join("")}
+            </div>
+          </div>
+        </section>
       </div>
-    </section>
-    <section class="panel-block"><h3>Saída</h3><div class="unit-actions"><button type="button" id="download-piece-json">Descargar estrutura</button><button type="button" id="open-a4">Folla A4 / PDF</button><button type="button" id="clear-builder">Baleirar carriño</button></div></section>
+      <section class="panel piece-repository">
+        <div class="section-title"><h2>Pezas gardadas</h2><span id="pieceRepositoryCount" class="muted">${repo.length} pezas</span></div>
+        <div class="toolbar"><div class="searchbox"><span>⌕</span><input id="pieceRepositorySearch" type="search" value="${escapeHtml(state.pieceRepositoryQuery)}" placeholder="Buscar no repositorio de pezas..."></div></div>
+        <div id="pieceRepositoryList" class="piece-grid">
+          ${repo.map(pieceCard).join("") || `<article class="panel empty-panel"><p class="muted">Aínda non hai pezas gardadas neste ámbito. Cando se publique unha peza, aparecerá aquí como mapa de referencias.</p></article>`}
+        </div>
+      </section>
+    </div>
   `;
   draft.sections.forEach(section => {
     const select = $(`[data-section-label="${section.id}"]`, view);
     if (select) select.value = section.label;
   });
-  $("#builder-title")?.addEventListener("input", event => saveDraft({ ...loadDraft(), title: event.target.value }));
-  $("#builder-author")?.addEventListener("input", event => saveDraft({ ...loadDraft(), author: event.target.value }));
-  $("#add-section")?.addEventListener("click", () => {
-    const next = loadDraft();
-    next.sections.push({ id: `section-${Date.now()}`, label: "xota", coplas: [] });
-    saveDraft(next);
-    renderBuilderView();
+  $("#pieceSearch")?.addEventListener("input", event => {
+    state.pieceLibraryQuery = event.target.value;
+    updatePieceLibrary(view);
   });
-  all("[data-mode-jump]", view).forEach(button => button.addEventListener("click", () => setMode(button.dataset.modeJump)));
+  $("#pieceRepositorySearch")?.addEventListener("input", event => {
+    state.pieceRepositoryQuery = event.target.value;
+    updatePieceRepository(view);
+  });
+  $("#pieceTerritorySearch")?.addEventListener("input", event => {
+    state.pieceTerritoryQuery = event.target.value;
+    renderPieceTerritoryResults(view);
+  });
+  $("#clearPieceTerritory")?.addEventListener("click", () => {
+    const next = loadDraft();
+    next.territoryId = "";
+    saveDraft(next);
+    state.selectedTerritory = null;
+    state.pieceTerritoryQuery = "";
+    renderPiecesView();
+  });
+  $("#pieceTitle")?.addEventListener("input", event => saveDraft({ ...loadDraft(), title: event.target.value }));
+  $("#pieceAuthor")?.addEventListener("input", event => saveDraft({ ...loadDraft(), author: event.target.value }));
+  $("#addSection")?.addEventListener("click", () => {
+    const next = loadDraft();
+    next.sections.push({ id: `section-${Date.now()}`, label: "Xota", coplas: [] });
+    saveDraft(next);
+    renderPiecesView();
+  });
+  $("#clearPiece")?.addEventListener("click", () => {
+    saveDraft(defaultDraft());
+    renderPiecesView();
+  });
+  $("#downloadPiece")?.addEventListener("click", () => {
+    downloadText("peza.json", JSON.stringify(buildPiecePayload(), null, 2), "application/json");
+  });
+  $("#openA4")?.addEventListener("click", openA4Sheet);
   all("[data-section-label]", view).forEach(select => select.addEventListener("change", () => {
     const next = loadDraft();
     const section = next.sections.find(item => item.id === select.dataset.sectionLabel);
     if (section) section.label = select.value;
     saveDraft(next);
-    renderBuilderView();
+    renderPiecesView();
   }));
   all("[data-remove-section]", view).forEach(button => button.addEventListener("click", () => {
     const next = loadDraft();
     if (next.sections.length > 1) next.sections = next.sections.filter(item => item.id !== button.dataset.removeSection);
     saveDraft(next);
-    renderBuilderView();
+    renderPiecesView();
   }));
-  all("[data-remove-copla]", view).forEach(button => button.addEventListener("click", () => {
+  all("[data-remove-cart]", view).forEach(button => button.addEventListener("click", () => {
     const next = loadDraft();
     next.sections.forEach(section => {
-      section.coplas = section.coplas.filter(item => Number(item.id) !== Number(button.dataset.removeCopla));
+      section.coplas = section.coplas.filter(item => Number(item.id) !== Number(button.dataset.removeCart));
     });
     saveDraft(next);
-    renderBuilderView();
+    renderPiecesView();
   }));
-  all("[data-up], [data-down]", view).forEach(button => button.addEventListener("click", () => {
-    const next = loadDraft();
-    const section = next.sections.find(item => item.id === button.dataset.section);
-    const coplaId = Number(button.dataset.up || button.dataset.down);
-    const index = section?.coplas.findIndex(item => Number(item.id) === coplaId) ?? -1;
-    const target = button.dataset.up ? index - 1 : index + 1;
-    if (section && index >= 0 && target >= 0 && target < section.coplas.length) {
-      const [item] = section.coplas.splice(index, 1);
-      section.coplas.splice(target, 0, item);
-      saveDraft(next);
-      renderBuilderView();
-    }
-  }));
-  bindBuilderDrag(view);
-  $("#download-piece-json")?.addEventListener("click", () => downloadText("peza.json", JSON.stringify(buildPiecePayload(), null, 2), "application/json"));
-  $("#open-a4")?.addEventListener("click", openA4Sheet);
-  $("#clear-builder")?.addEventListener("click", () => {
-    saveDraft(defaultDraft());
-    renderBuilderView();
-  });
-}
-
-function buildPiecePayload() {
-  const draft = loadDraft();
-  let position = 0;
-  return {
-    pieces: [{
-      title: draft.title || "Peza sen título",
-      slug: slugify(draft.title || "peza"),
-      author: draft.author || "Sen autoría",
-      context_territory_id: draft.territoryId || state.selectedTerritory?.id || null,
-      description: "",
-      notes: "",
-      status: "draft",
-      coplas: draft.sections.flatMap(section => section.coplas.map(copla => {
-        position += 1;
-        return { copla_id: Number(copla.id), position, section_label: section.label };
-      })),
-    }],
-  };
+  bindCoplaActions(view);
+  bindPieceDrag(view);
 }
 
 function moveDraftCopla(coplaId, targetSectionId, beforeCoplaId = null) {
@@ -732,29 +852,25 @@ function moveDraftCopla(coplaId, targetSectionId, beforeCoplaId = null) {
   let moving = null;
   draft.sections.forEach(section => {
     const index = section.coplas.findIndex(item => Number(item.id) === Number(coplaId));
-    if (index >= 0) {
-      [moving] = section.coplas.splice(index, 1);
-    }
+    if (index >= 0) [moving] = section.coplas.splice(index, 1);
   });
   if (!moving) return;
   const target = draft.sections.find(section => section.id === targetSectionId) || draft.sections[0];
-  const beforeIndex = beforeCoplaId
-    ? target.coplas.findIndex(item => Number(item.id) === Number(beforeCoplaId))
-    : -1;
+  const beforeIndex = beforeCoplaId ? target.coplas.findIndex(item => Number(item.id) === Number(beforeCoplaId)) : -1;
   if (beforeIndex >= 0) target.coplas.splice(beforeIndex, 0, moving);
   else target.coplas.push(moving);
   saveDraft(draft);
-  renderBuilderView();
+  renderPiecesView();
 }
 
-function bindBuilderDrag(root) {
+function bindPieceDrag(root) {
   all("[data-drag-copla]", root).forEach(card => {
     card.addEventListener("dragstart", event => {
       event.dataTransfer.setData("text/plain", card.dataset.dragCopla);
       event.dataTransfer.effectAllowed = "move";
-      card.classList.add("is-dragging");
+      card.classList.add("dragging");
     });
-    card.addEventListener("dragend", () => card.classList.remove("is-dragging"));
+    card.addEventListener("dragend", () => card.classList.remove("dragging"));
     card.addEventListener("dragover", event => event.preventDefault());
     card.addEventListener("drop", event => {
       event.preventDefault();
@@ -763,70 +879,256 @@ function bindBuilderDrag(root) {
       moveDraftCopla(coplaId, card.dataset.section, card.dataset.dragCopla);
     });
   });
-
   all("[data-drop-section]", root).forEach(stack => {
     stack.addEventListener("dragover", event => {
       event.preventDefault();
-      stack.classList.add("is-drop-target");
+      stack.classList.add("drop-target");
     });
-    stack.addEventListener("dragleave", () => stack.classList.remove("is-drop-target"));
+    stack.addEventListener("dragleave", () => stack.classList.remove("drop-target"));
     stack.addEventListener("drop", event => {
       event.preventDefault();
-      stack.classList.remove("is-drop-target");
+      stack.classList.remove("drop-target");
       const coplaId = event.dataTransfer.getData("text/plain");
       if (coplaId) moveDraftCopla(coplaId, stack.dataset.dropSection);
     });
   });
 }
 
+function buildPiecePayload() {
+  const draft = loadDraft();
+  let position = 0;
+  return {
+    title: draft.title || "Peza sen título",
+    slug: slugify(draft.title || "peza"),
+    author: draft.author || "Sen autoría",
+    context_territory_id: draft.territoryId || state.selectedTerritory?.id || null,
+    sections: draft.sections.map(section => ({
+      label: section.label,
+      coplas: section.coplas.map(copla => {
+        position += 1;
+        return { copla_id: Number(copla.id), position, section_label: section.label };
+      }),
+    })),
+  };
+}
+
 function openA4Sheet() {
   const draft = loadDraft();
-  const html = `<!doctype html><html lang="gl"><head><meta charset="utf-8"><title>${escapeHtml(draft.title || "Peza")}</title><style>@page{size:A4;margin:16mm}body{font-family:Avenir Next,Segoe UI,sans-serif;color:#1d2326}h1{font-size:24pt;margin:0 0 2mm}header{border-bottom:1px solid #bbb;padding-bottom:5mm;margin-bottom:8mm}.meta{color:#667;font-size:10pt}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10mm}.part{break-inside:avoid;margin-bottom:8mm}h2{text-transform:uppercase;font-size:12pt;color:#7f3326;letter-spacing:.08em}.copla{font-family:Georgia,serif;font-size:11pt;line-height:1.45;margin-bottom:5mm;white-space:pre-line}.incipit{font-weight:700;font-family:Avenir Next,Segoe UI,sans-serif;font-size:9pt;margin-bottom:1mm}</style></head><body><header><h1>${escapeHtml(draft.title || "Peza sen título")}</h1><div class="meta">${escapeHtml(draft.author || "Sen autoría")}</div></header><main class="grid">${draft.sections.filter(section => section.coplas.length).map(section => `<section class="part"><h2>${escapeHtml(section.label)}</h2>${section.coplas.map(copla => `<article><div class="incipit">${escapeHtml(copla.incipit || "")}</div><div class="copla">${escapeHtml(copla.text || "")}</div></article>`).join("")}</section>`).join("")}</main><script>window.print();</script></body></html>`;
+  const html = `<!doctype html><html lang="gl"><head><meta charset="utf-8"><title>${escapeHtml(draft.title || "Peza")}</title><style>@page{size:A4;margin:16mm}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#20231f}h1{font-size:24pt;margin:0 0 2mm}header{border-bottom:1px solid #c7c8c2;padding-bottom:5mm;margin-bottom:8mm}.meta{color:#71776f;font-size:10pt}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10mm}.part{break-inside:avoid;margin-bottom:8mm}h2{text-transform:uppercase;font-size:12pt;color:#315f4b;letter-spacing:.08em}.copla{font-family:Georgia,serif;font-size:11pt;line-height:1.45;margin-bottom:5mm;white-space:pre-line}.incipit{font-weight:700;font-size:9pt;margin-bottom:1mm}</style></head><body><header><h1>${escapeHtml(draft.title || "Peza sen título")}</h1><div class="meta">${escapeHtml(draft.author || "Sen autoría")}</div></header><main class="grid">${draft.sections.filter(section => section.coplas.length).map(section => `<section class="part"><h2>${escapeHtml(section.label)}</h2>${section.coplas.map(copla => `<article><div class="incipit">${escapeHtml(copla.incipit || "")}</div><div class="copla">${escapeHtml(copla.text || "")}</div></article>`).join("")}</section>`).join("")}</main><script>window.print();</script></body></html>`;
   const blob = new Blob([html], { type: "text/html" });
   const url = URL.createObjectURL(blob);
   window.open(url, "_blank", "noopener");
   window.setTimeout(() => URL.revokeObjectURL(url), 3000);
 }
 
+function renderTerritorySearchResults(root = $("#view-territory")) {
+  const results = $("#territorySearchResults", root);
+  if (!results) return;
+  const query = state.territoryQuery.trim();
+  if (!query) {
+    results.innerHTML = "";
+    return;
+  }
+  const matches = searchTerritories(state.territorios, query).slice(0, 30);
+  results.innerHTML = matches.map(item => `<button type="button" data-territory-id="${item.id}"><strong>${escapeHtml(item.nome)}</strong><span>${escapeHtml(territoryLabel(item))}</span></button>`).join("") || `<p class="muted">Sen resultados.</p>`;
+  bindResultButtons(results);
+}
+
+function renderTerritoryView() {
+  const view = $("#view-territory");
+  const territory = state.selectedTerritory;
+  const query = state.territoryQuery;
+  const ctx = placeContext(territory);
+  const direct = territory ? ctx.coplas.filter(copla => (copla.territories || []).some(item => item.id === territory.id)).length : 0;
+  view.innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">Territorios</div>
+          <h1>${territory ? escapeHtml(territory.nome) : "Explorar territorios"}</h1>
+          <p>Busca ou escolle un territorio para ver xerarquía, coplas directas, material herdado, pezas e media.</p>
+        </div>
+        <button class="btn primary" type="button" data-view="map">Ver no mapa</button>
+      </div>
+      <div class="toolbar">
+        <div class="searchbox"><span>⌕</span><input id="territorySearch" type="search" value="${escapeHtml(query)}" placeholder="Buscar parroquia, concello, comarca..."></div>
+      </div>
+      <div id="territorySearchResults" class="territory-results"></div>
+      <div class="territory-hero">
+        <section class="territory-card">
+          <div class="breadcrumbs">${territory ? ctx.hierarchy.map(item => escapeHtml(item.nome)).join(" · ") : "Galiza"}</div>
+          <div class="eyebrow">${escapeHtml(territory ? territoryLabel(territory) : "Arquivo")}</div>
+          <h1>${territory ? escapeHtml(territory.nome) : "Selecciona un territorio"}</h1>
+          <p>${territory ? `${direct} coplas directas e ${Math.max(ctx.coplas.length - direct, 0)} herdadas dos subterritorios.` : "A ficha territorial nace como punto de navegación, non como páxina enciclopédica."}</p>
+          <div class="stats">
+            <div class="stat"><b>${ctx.coplas.length}</b><span>coplas</span></div>
+            <div class="stat"><b>${ctx.pezas.length}</b><span>pezas</span></div>
+            <div class="stat"><b>${ctx.media.length}</b><span>media</span></div>
+          </div>
+        </section>
+        <section class="territory-mini-map-wrap">
+          <div id="territoryMiniMap" class="territory-mini-map"></div>
+          ${territory ? "" : `<span>Mapa/xeometría do territorio</span>`}
+        </section>
+      </div>
+      <div class="territory-tabs">
+        ${[
+          ["summary", "Resumo"],
+          ["coplas", "Coplas"],
+          ["pieces", "Pezas"],
+          ["melodies", "Melodías"],
+          ["media", "Media"],
+          ["children", "Subterritorios"],
+        ].map(([key, label]) => `<button class="${state.territoryTab === key ? "active" : ""}" type="button" data-territory-tab="${key}">${label}</button>`).join("")}
+      </div>
+      <div id="territoryTabPanel">${renderTerritoryTab(territory, ctx)}</div>
+    </div>
+  `;
+  $("#territorySearch")?.addEventListener("input", event => {
+    state.territoryQuery = event.target.value;
+    renderTerritorySearchResults(view);
+  });
+  all("[data-territory-tab]", view).forEach(button => button.addEventListener("click", () => {
+    state.territoryTab = button.dataset.territoryTab;
+    renderTerritoryView();
+  }));
+  bindResultButtons(view);
+  bindCoplaActions(view);
+  renderTerritorySearchResults(view);
+  renderTerritoryMiniMap(territory);
+}
+
+function renderTerritoryTab(territory, ctx) {
+  if (!territory) {
+    return `<section class="panel"><p class="muted">Busca ou selecciona un territorio para explorar as súas coplas, pezas, media e subterritorios.</p></section>`;
+  }
+  if (state.territoryTab === "coplas") {
+    return `
+      <div class="section-title"><h2>Coplas de ${escapeHtml(territory.nome)}</h2><span class="muted">${ctx.coplas.length} resultados</span></div>
+      <div class="copla-gallery">${ctx.coplas.map(copla => coplaCard(copla)).join("") || `<p class="muted">Aínda non hai coplas neste territorio.</p>`}</div>
+    `;
+  }
+  if (state.territoryTab === "pieces") {
+    return `
+      <div class="section-title"><h2>Pezas relacionadas</h2><span class="muted">${ctx.pezas.length} resultados</span></div>
+      <div class="copla-gallery">${ctx.pezas.map(piece => `
+        <article class="gallery-card">
+          <div><div class="eyebrow">Peza</div><h2>${escapeHtml(piece.title || piece.titulo || "Peza sen título")}</h2><p>${escapeHtml(piece.description || piece.notes || "Sen descrición.")}</p></div>
+          <div class="meta"><span class="tag place">${escapeHtml(territory.nome)}</span></div>
+        </article>
+      `).join("") || `<p class="muted">Aínda non hai pezas neste territorio.</p>`}</div>
+    `;
+  }
+  if (state.territoryTab === "media") {
+    return `
+      <div class="section-title"><h2>Media relacionada</h2><span class="muted">${ctx.media.length} recursos</span></div>
+      <div class="media-grid">${ctx.media.map(mediaCard).join("") || `<article class="panel"><p class="muted">Aínda non hai media neste territorio.</p></article>`}</div>
+    `;
+  }
+  if (state.territoryTab === "melodies") {
+    const melodies = ctx.media.filter(item => ["audio", "video", "spotify", "youtube"].includes(mediaKind(item)));
+    return `
+      <div class="section-title"><h2>Melodías</h2><span class="muted">${melodies.length} recursos sonoros</span></div>
+      <div class="media-grid">${melodies.map(mediaCard).join("") || `<article class="panel"><p class="muted">Aínda non hai melodías rexistradas neste territorio. A pantalla xa admite audio local, vídeo, YouTube e Spotify cando se dean de alta.</p></article>`}</div>
+    `;
+  }
+  if (state.territoryTab === "children") {
+    return `
+      <div class="section-title"><h2>Subterritorios</h2><span class="muted">${ctx.children.length} elementos</span></div>
+      <div class="territory-results">${ctx.children.map(item => `<button type="button" data-territory-id="${item.id}"><strong>${escapeHtml(item.nome)}</strong><span>${escapeHtml(territoryLabel(item))}</span></button>`).join("") || `<p class="muted">Sen subterritorios neste nivel.</p>`}</div>
+    `;
+  }
+  return `
+    <div class="section-title"><h2>Resumo textual</h2><button class="btn" type="button" data-territory-tab="coplas">Ver coplas aquí</button></div>
+    <div class="copla-list">${ctx.coplas.slice(0, 6).map(copla => coplaCard(copla, { list: true })).join("") || `<p class="muted">Aínda non hai coplas neste territorio.</p>`}</div>
+    <div class="section-title"><h2>Subterritorios</h2></div>
+    <div class="territory-results">${ctx.children.slice(0, 18).map(item => `<button type="button" data-territory-id="${item.id}"><strong>${escapeHtml(item.nome)}</strong><span>${escapeHtml(territoryLabel(item))}</span></button>`).join("") || `<p class="muted">Sen subterritorios neste nivel.</p>`}</div>
+  `;
+}
+
+async function renderTerritoryMiniMap(territory) {
+  const el = $("#territoryMiniMap");
+  if (!el) return;
+  if (!window.L) {
+    el.innerHTML = `<div class="map-fallback"><p>Mini-mapa non dispoñible.</p></div>`;
+    return;
+  }
+  if (state.miniMap) {
+    state.miniMap.remove();
+    state.miniMap = null;
+    state.miniLayer = null;
+  }
+  state.miniMap = L.map(el, {
+    attributionControl: false,
+    zoomControl: true,
+    scrollWheelZoom: false,
+  }).setView([42.8, -8.2], 8);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18 }).addTo(state.miniMap);
+  if (!territory) {
+    window.setTimeout(() => state.miniMap.invalidateSize(), 80);
+    return;
+  }
+  try {
+    let data = await getGeoLayer(territory.tipo);
+    data = topoToGeo(data);
+    state.miniLayer = L.geoJSON(data, {
+      filter: feature => findTerritoryByFeature(feature, territory.tipo, state.territorios)?.id === territory.id,
+      style: { weight: 2, color: "#315f4b", fillColor: "#8ca99b", fillOpacity: 0.34 },
+    }).addTo(state.miniMap);
+    window.setTimeout(() => {
+      state.miniMap.invalidateSize();
+      try {
+        state.miniMap.fitBounds(state.miniLayer.getBounds(), { padding: [18, 18] });
+      } catch {}
+    }, 80);
+  } catch {
+    el.innerHTML = `<span>Non se puido cargar a xeometría.</span>`;
+  }
+}
+
 function renderSubmitView() {
-  const view = $("#submit-view");
+  const view = $("#view-submit");
   const batch = loadBatch();
   const selectedTerritory = state.territorios.find(item => item.id === state.submitTerritoryId) || state.selectedTerritory;
   view.innerHTML = `
-    <div class="view-head"><p class="micro-label">Alta</p><h2>Nova copla ou variante</h2><p class="quiet">Se corres o proxecto con <code>./serve.sh</code>, este formulario pode gardar directamente na SQLite e rexenerar a web.</p></div>
-    <section class="panel-block">
-      <label>Texto principal<textarea id="new-text" rows="5" placeholder="Escribe a copla..."></textarea></label>
-      <div class="form-grid">
-        <label>Estado territorial<select id="new-state"><option value="assigned">Asignada a lugar</option><option value="unassigned">Lugar descoñecido</option><option value="general">Galiza xeral</option></select></label>
-        <label>Territorio
-          <input id="territory-query" type="search" value="${escapeHtml(selectedTerritory?.nome || "")}" placeholder="Buscar concello, parroquia, comarca...">
-        </label>
+    <div class="page">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">Alta</div>
+          <h1>Nova copla ou variante</h1>
+          <p>Formulario local para introducir corpus sen procedementos intermedios cando o servidor está activo.</p>
+        </div>
       </div>
-      <div id="territory-picker-results" class="territory-picker-results"></div>
-      <p id="selected-territory-label" class="quiet">${selectedTerritory ? `Seleccionado: ${escapeHtml(selectedTerritory.nome)} (${escapeHtml(TYPE_LABELS[selectedTerritory.tipo] || selectedTerritory.tipo)})` : "Sen territorio seleccionado."}</p>
-      <label>Etiquetas<input id="new-tags" type="text" placeholder="amor, romaría, traballo..."></label>
-      <label>Notas<textarea id="new-notes" rows="3" placeholder="Fonte, contexto, dúbidas editoriais..."></textarea></label>
-    </section>
-    <section class="panel-block">
-      <div class="block-title"><h3>Variantes</h3><button type="button" class="text-button" id="add-version-row">Engadir variante</button></div>
-      <div id="version-rows" class="version-rows"></div>
-    </section>
-    <section class="panel-block">
-      <div class="unit-actions"><button type="button" id="save-direct">Gardar na base local</button><button type="button" id="add-to-batch">Engadir ao lote</button><button type="button" id="download-batch">Exportar lote JSON</button><button type="button" id="clear-batch">Limpar lote</button></div>
-      <p id="submit-feedback" class="quiet"></p>
-      <p class="quiet">${batch.length} entradas no lote.</p>
-      <pre class="json-preview">${escapeHtml(JSON.stringify({ coplas: batch }, null, 2))}</pre>
-    </section>
+      <div class="layout-two">
+        <section class="panel">
+          <div class="formgrid">
+            <div class="field full"><label>Texto principal</label><textarea id="newText" rows="7" placeholder="Escribe a copla..."></textarea></div>
+            <div class="field"><label>Estado territorial</label><select id="newState"><option value="assigned">Asignada a lugar</option><option value="unassigned">Lugar descoñecido</option><option value="general">Galiza xeral</option></select></div>
+            <div class="field"><label>Territorio</label><input id="territoryQuery" type="search" value="${escapeHtml(selectedTerritory?.nome || "")}" placeholder="Buscar concello, parroquia, comarca..."></div>
+            <div class="field full"><div id="territoryPickerResults" class="territory-results compact"></div></div>
+            <div class="field full"><p id="selectedTerritoryLabel" class="muted">${selectedTerritory ? `Seleccionado: ${escapeHtml(selectedTerritory.nome)} (${escapeHtml(territoryLabel(selectedTerritory))})` : "Sen territorio seleccionado."}</p></div>
+            <div class="field full"><label>Etiquetas</label><input id="newTags" type="text" placeholder="amor, romaría, traballo..."></div>
+            <div class="field full"><label>Notas</label><textarea id="newNotes" rows="3" placeholder="Fonte, contexto, dúbidas editoriais..."></textarea></div>
+          </div>
+        </section>
+        <aside class="panel sticky">
+          <div class="section-title"><h2>Variantes</h2><button class="btn" type="button" id="addVersion">Engadir</button></div>
+          <div id="versionRows" class="version-rows"></div>
+          <div class="section-title"><h2>Gardar</h2></div>
+          <div class="gallery-actions vertical">
+            <button class="btn primary" type="button" id="saveDirect">Gardar na base local</button>
+            <button class="btn" type="button" id="addToBatch">Engadir ao lote</button>
+            <button class="btn" type="button" id="downloadBatch">Descargar lote</button>
+          </div>
+          <p id="submitFeedback" class="muted">${batch.length} entradas no lote.</p>
+        </aside>
+      </div>
+    </div>
   `;
   if (!state.submitTerritoryId && state.selectedTerritory) state.submitTerritoryId = state.selectedTerritory.id;
   bindTerritoryPicker();
-  $("#add-version-row")?.addEventListener("click", () => {
-    const row = document.createElement("div");
-    row.className = "version-row";
-    row.innerHTML = `<input type="text" placeholder="Etiqueta da variante"><textarea rows="3" placeholder="Texto da variante"></textarea><input type="text" placeholder="Notas">`;
-    $("#version-rows").appendChild(row);
-  });
-  $("#add-to-batch")?.addEventListener("click", () => {
+  $("#addVersion")?.addEventListener("click", addVersionRow);
+  $("#addToBatch")?.addEventListener("click", () => {
     const payload = buildCoplaPayloadFromForm();
     if (!payload) return;
     const next = loadBatch();
@@ -834,112 +1136,77 @@ function renderSubmitView() {
     saveBatch(next);
     renderSubmitView();
   });
-  $("#save-direct")?.addEventListener("click", saveCoplaDirect);
-  $("#download-batch")?.addEventListener("click", () => downloadText("coplas-lote.json", JSON.stringify({ coplas: loadBatch() }, null, 2), "application/json"));
-  $("#clear-batch")?.addEventListener("click", () => {
-    saveBatch([]);
-    renderSubmitView();
-  });
+  $("#downloadBatch")?.addEventListener("click", () => downloadText("coplas-lote.json", JSON.stringify({ coplas: loadBatch() }, null, 2), "application/json"));
+  $("#saveDirect")?.addEventListener("click", saveCoplaDirect);
 }
 
-function mediaCard(item) {
-  const related = Array.isArray(item.related) ? item.related : [];
-  const url = item.url || item.href || "";
-  return `
-    <article class="media-card">
-      <div>
-        <p class="micro-label">${escapeHtml(item.type || item.provider || "media")}</p>
-        <h3>${escapeHtml(item.title || item.label || "Recurso sen título")}</h3>
-        ${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(url)}</a>` : `<p class="quiet">Sen ligazón pública.</p>`}
-      </div>
-      <p class="quiet">${related.length ? `${related.length} relacións documentais` : "Preparado para ligar a territorio, copla ou peza."}</p>
-    </article>
-  `;
-}
-
-function renderMediaView() {
-  const view = $("#media-view");
-  const ctx = placeContext();
-  const scoped = state.selectedTerritory ? ctx.media : state.media;
-  view.innerHTML = `
-    <div class="view-head">
-      <p class="micro-label">Media</p>
-      <h2>${state.selectedTerritory ? `Recursos de ${escapeHtml(state.selectedTerritory.nome)}` : "Arquivo sonoro e audiovisual"}</h2>
-      <p class="quiet">Espazo preparado para mp3, mp4, vídeos, Spotify, YouTube, webs externas e documentos ligados a coplas, pezas ou territorios.</p>
-    </div>
-    <section class="panel-block">
-      <div class="metric-grid">
-        <div class="metric"><strong>${scoped.length}</strong><span>recursos</span></div>
-        <div class="metric"><strong>${state.media.filter(item => ["audio", "mp3"].includes(item.type)).length}</strong><span>audios</span></div>
-        <div class="metric"><strong>${state.media.filter(item => ["video", "mp4", "youtube"].includes(item.type)).length}</strong><span>vídeos</span></div>
-      </div>
-      <div class="media-lanes">${scoped.map(mediaCard).join("") || `<p class="quiet">Aínda non hai media neste ámbito.</p>`}</div>
-    </section>
-  `;
-}
-
-function buildCoplaPayloadFromForm() {
-    const text = $("#new-text").value.trim();
-    if (!text) {
-      $("#submit-feedback").textContent = "Escribe o texto da copla antes de gardar.";
-      return null;
-    }
-    const territoryId = state.submitTerritoryId;
-    const territoryState = $("#new-state").value;
-    if (territoryState === "assigned" && !territoryId) {
-      $("#submit-feedback").textContent = "Busca e selecciona un territorio, ou cambia o estado territorial.";
-      return null;
-    }
-    const versions = all(".version-row").map(row => ({
-      label: $("input", row).value,
-      text: $("textarea", row).value,
-      notes: all("input", row)[1].value,
-    })).filter(item => item.text.trim());
-    return {
-      text,
-      notes: $("#new-notes").value,
-      status: "published",
-      territory_state: territoryState,
-      territories: territoryState === "assigned" && territoryId ? [{ id: territoryId }] : [],
-      tags: $("#new-tags").value.split(",").map(item => normalizeText(item)).filter(Boolean),
-      versions,
-    };
+function addVersionRow() {
+  const row = document.createElement("div");
+  row.className = "version-row";
+  row.innerHTML = `<input type="text" placeholder="Etiqueta da variante"><textarea rows="3" placeholder="Texto da variante"></textarea><input type="text" placeholder="Notas">`;
+  $("#versionRows").appendChild(row);
 }
 
 function bindTerritoryPicker() {
-  const input = $("#territory-query");
-  const results = $("#territory-picker-results");
-  const renderResults = () => {
-    const q = input.value.trim();
-    if (!q) {
+  const input = $("#territoryQuery");
+  const results = $("#territoryPickerResults");
+  if (!input || !results) return;
+  input.addEventListener("input", () => {
+    const query = input.value.trim();
+    if (!query) {
       results.innerHTML = "";
       return;
     }
-    const matches = searchTerritories(state.territorios, q).slice(0, 10);
+    const matches = searchTerritories(state.territorios, query).slice(0, 12);
     results.innerHTML = matches.map(item => `
       <button type="button" data-pick-territory="${item.id}">
         <strong>${escapeHtml(item.nome)}</strong>
-        <span>${escapeHtml(TYPE_LABELS[item.tipo] || item.tipo)}</span>
+        <span>${escapeHtml(territoryLabel(item))}</span>
       </button>
-    `).join("") || `<p class="quiet">Sen resultados.</p>`;
-    all("[data-pick-territory]", results).forEach(button => {
-      button.addEventListener("click", () => {
-        const territory = state.territorios.find(item => item.id === button.dataset.pickTerritory);
-        if (!territory) return;
-        state.submitTerritoryId = territory.id;
-        input.value = territory.nome;
-        $("#selected-territory-label").textContent = `Seleccionado: ${territory.nome} (${TYPE_LABELS[territory.tipo] || territory.tipo})`;
-        results.innerHTML = "";
-      });
-    });
+    `).join("") || `<p class="muted">Sen resultados.</p>`;
+    all("[data-pick-territory]", results).forEach(button => button.addEventListener("click", () => {
+      const territory = state.territorios.find(item => item.id === button.dataset.pickTerritory);
+      if (!territory) return;
+      state.submitTerritoryId = territory.id;
+      input.value = territory.nome;
+      $("#selectedTerritoryLabel").textContent = `Seleccionado: ${territory.nome} (${territoryLabel(territory)})`;
+      results.innerHTML = "";
+    }));
+  });
+}
+
+function buildCoplaPayloadFromForm() {
+  const text = $("#newText").value.trim();
+  const feedback = $("#submitFeedback");
+  if (!text) {
+    feedback.textContent = "Escribe o texto da copla antes de gardar.";
+    return null;
+  }
+  const territoryState = $("#newState").value;
+  if (territoryState === "assigned" && !state.submitTerritoryId) {
+    feedback.textContent = "Busca e selecciona un territorio, ou cambia o estado territorial.";
+    return null;
+  }
+  const versions = all(".version-row").map(row => ({
+    label: $("input", row).value,
+    text: $("textarea", row).value,
+    notes: all("input", row)[1].value,
+  })).filter(item => item.text.trim());
+  return {
+    text,
+    notes: $("#newNotes").value,
+    status: "published",
+    territory_state: territoryState,
+    territories: territoryState === "assigned" && state.submitTerritoryId ? [{ id: state.submitTerritoryId }] : [],
+    tags: $("#newTags").value.split(",").map(item => normalizeText(item)).filter(Boolean),
+    versions,
   };
-  input.addEventListener("input", renderResults);
 }
 
 async function saveCoplaDirect() {
   const payload = buildCoplaPayloadFromForm();
   if (!payload) return;
-  const feedback = $("#submit-feedback");
+  const feedback = $("#submitFeedback");
   feedback.textContent = "Gardando na base local...";
   try {
     const response = await fetch("../api/coplas", {
@@ -953,8 +1220,47 @@ async function saveCoplaDirect() {
     clearApiCache();
     state.coplas = await getCoplas();
   } catch (error) {
-    feedback.textContent = `${error.message} Podes engadir ao lote e exportar JSON como alternativa.`;
+    feedback.textContent = `${error.message} Podes engadir ao lote e descargalo como alternativa.`;
   }
+}
+
+function renderMediaView() {
+  const view = $("#view-media");
+  const ctx = placeContext();
+  const items = state.selectedTerritory ? ctx.media : state.media;
+  view.innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">Media</div>
+          <h1>${state.selectedTerritory ? `Media de ${escapeHtml(state.selectedTerritory.nome)}` : "Media"}</h1>
+          <p>Audio, vídeo, documentos e ligazóns externas ligadas a coplas, pezas ou territorios.</p>
+        </div>
+      </div>
+      <div class="media-grid">
+        ${items.map(mediaCard).join("") || `<article class="panel"><p class="muted">Aínda non hai recursos multimedia para mostrar.</p></article>`}
+      </div>
+    </div>
+  `;
+}
+
+function renderAboutView() {
+  $("#view-about").innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">Proxecto</div>
+          <h1>Sobre Fol e ar</h1>
+          <p>Arquivo dixital para conservar, consultar e montar repertorio tradicional galego desde o territorio e desde o texto.</p>
+        </div>
+      </div>
+      <div class="about-grid">
+        <article class="panel"><h2>Explorar</h2><p>Mapa e territorios para descubrir repertorio sen coñecer previamente o corpus.</p></article>
+        <article class="panel"><h2>Consultar</h2><p>Coplas en grade, lista ou galería, con procura textual e lectura de variantes.</p></article>
+        <article class="panel"><h2>Construír</h2><p>Pezas como carriño editorial: escoller, ordenar, separar por ritmos e exportar para cantar.</p></article>
+      </div>
+    </div>
+  `;
 }
 
 function downloadText(filename, text, type = "text/plain") {
@@ -966,81 +1272,106 @@ function downloadText(filename, text, type = "text/plain") {
   URL.revokeObjectURL(link.href);
 }
 
-function renderActiveView() {
-  if (state.mode === "place") renderPlaceView();
-  if (state.mode === "corpus") renderCorpusView();
-  if (state.mode === "builder") renderBuilderView();
-  if (state.mode === "submit") renderSubmitView();
-  if (state.mode === "media") renderMediaView();
+function renderView() {
+  if (state.view === "coplas") renderCoplasView();
+  if (state.view === "pieces") renderPiecesView();
+  if (state.view === "territory") renderTerritoryView();
+  if (state.view === "submit") renderSubmitView();
+  if (state.view === "media") renderMediaView();
+  if (state.view === "about") renderAboutView();
+}
+
+function bindGlobalEvents() {
+  document.addEventListener("click", event => {
+    const nav = event.target.closest("[data-view]");
+    if (nav) setView(nav.dataset.view);
+  });
+  $("#collapseBtn")?.addEventListener("click", () => {
+    const sidebar = $("#sidebar");
+    sidebar.classList.toggle("collapsed");
+    const icon = $("#collapseBtn .nav-icon");
+    const label = $("#collapseBtn span:last-child");
+    if (icon) icon.textContent = sidebar.classList.contains("collapsed") ? "›" : "‹";
+    if (label) label.textContent = sidebar.classList.contains("collapsed") ? "Abrir" : "Contraer";
+    window.setTimeout(() => state.map?.invalidateSize(), 250);
+  });
+  $("#clearTerritory")?.addEventListener("click", clearTerritory);
+  $("#mapLayer")?.addEventListener("change", event => loadLayer(event.target.value));
+  $("#mapSearch")?.addEventListener("input", event => renderMapSearch(event.target.value));
+  $("#mapSearchBtn")?.addEventListener("click", () => {
+    const query = $("#mapSearch").value;
+    const firstTerritory = searchTerritories(state.territorios, query)[0];
+    if (firstTerritory) selectTerritory(firstTerritory);
+    else {
+      state.coplaQuery = query;
+      setView("coplas");
+    }
+  });
+  $("#mapSearch")?.addEventListener("keydown", event => {
+    if (event.key === "Enter") $("#mapSearchBtn").click();
+  });
+  all("[data-map-action]").forEach(button => button.addEventListener("click", () => {
+    setView(button.dataset.mapAction === "territory" ? "territory" : "coplas");
+  }));
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      closeCoplaDrawer();
+      if (state.selectedTerritory && state.view === "map") clearTerritory();
+    }
+  });
 }
 
 async function init() {
-  [state.territorios, state.coplas, state.pezas, state.media] = await Promise.all([
+  bindGlobalEvents();
+  updateCartBadges();
+  setView(normalizeView(new URL(window.location.href).searchParams.get("mode") || new URL(window.location.href).searchParams.get("view") || "map"));
+
+  const [territorios, coplas, pezas, media] = await Promise.allSettled([
     getTerritorios(),
     getCoplas(),
     getPezas(),
     getMedia(),
   ]);
+  state.territorios = territorios.status === "fulfilled" ? territorios.value : [];
+  state.coplas = coplas.status === "fulfilled" ? coplas.value : [];
+  state.pezas = pezas.status === "fulfilled" ? pezas.value : [];
+  state.media = media.status === "fulfilled" ? media.value : [];
 
-  state.map = L.map("archive-map", { zoomControl: false, attributionControl: true }).setView([42.8, -8.2], 8);
-  L.control.zoom({ position: "bottomleft" }).addTo(state.map);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 18,
-    attribution: "&copy; OpenStreetMap contributors",
-  }).addTo(state.map);
+  if (window.L) {
+    state.map = L.map("map", { zoomControl: false }).setView([42.8, -8.2], 8);
+    L.control.zoom({ position: "bottomleft" }).addTo(state.map);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18,
+      attribution: "&copy; OpenStreetMap contributors",
+    }).addTo(state.map);
+    try {
+      await loadLayer("con");
+    } catch (error) {
+      console.error(error);
+      $("#map").insertAdjacentHTML("beforeend", `<div class="map-load-error">Non se puido cargar a capa territorial.</div>`);
+    }
+  } else {
+    $("#map").innerHTML = `<div class="map-fallback"><h2>Non se puido cargar Leaflet</h2><p>Comproba a conexión ou serve a libraría localmente.</p></div>`;
+  }
 
-  $("#map-layer").addEventListener("change", event => loadLayer(event.target.value));
-  $("#global-search").addEventListener("input", event => renderSearch(event.target.value));
-  $("#global-search").addEventListener("keydown", event => {
-    if (event.key !== "Enter") return;
-    const first = searchTerritories(state.territorios, event.target.value)[0];
-    if (first) selectTerritory(first, { switchMode: true });
-  });
-  $("#collapse-workbench").addEventListener("click", () => {
-    state.workbenchCollapsed = !state.workbenchCollapsed;
-    if (state.workbenchCollapsed) state.workbenchFocused = false;
-    syncWorkbenchChrome();
-  });
-  $("#focus-workbench").addEventListener("click", () => {
-    state.workbenchFocused = !state.workbenchFocused;
-    if (state.workbenchFocused) state.workbenchCollapsed = false;
-    syncWorkbenchChrome();
-  });
-  updateCartBadges();
-
-  document.addEventListener("click", event => {
-    const tab = event.target.closest("[data-mode]");
-    if (tab) setMode(tab.dataset.mode);
-  });
-
-  await loadLayer("con");
   const params = new URL(window.location.href).searchParams;
   const territoryId = params.get("territory_id") || params.get("id");
   const coplaId = params.get("copla_id");
-  const initialMode = params.get("mode");
-  if (coplaId) {
-    state.selectedCoplaId = Number(coplaId);
-    setMode("coplas");
-    return;
-  }
   if (territoryId) {
     const territory = state.territorios.find(item => item.id === territoryId);
-    if (territory) {
-      await selectTerritory(territory, { switchMode: !sameMode(initialMode, "coplas") });
-      if (initialMode && ["place", "map", "lugar", "corpus", "coplas", "builder", "pieces", "pezas", "submit", "alta", "media"].includes(initialMode)) {
-        setMode(initialMode);
-      }
-      return;
-    }
+    if (territory) await selectTerritory(territory);
   }
-  if (initialMode && ["place", "map", "lugar", "corpus", "coplas", "builder", "pieces", "pezas", "submit", "alta", "media"].includes(initialMode)) {
-    setMode(initialMode);
-    return;
-  }
-  renderActiveView();
+  if (coplaId) state.selectedCoplaId = Number(coplaId);
+
+  updateMapCard();
+  setView(coplaId ? "coplas" : normalizeView(params.get("mode") || params.get("view") || "map"));
+  if (coplaId) openCoplaDrawer(Number(coplaId));
 }
 
 init().catch(error => {
-  $("#map-status-text").textContent = error.message;
-  $("#place-view").innerHTML = `<div class="view-head"><h2>Erro ao cargar</h2><p class="quiet">${escapeHtml(error.message)}</p></div>`;
+  console.error(error);
+  const active = $(".view.active");
+  if (active) {
+    active.insertAdjacentHTML("afterbegin", `<div class="runtime-warning">Erro parcial ao cargar: ${escapeHtml(error.message)}</div>`);
+  }
 });
