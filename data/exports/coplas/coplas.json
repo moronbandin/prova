@@ -1,5 +1,27 @@
 [
   {
+    "id": 4,
+    "text": "De onde son aqueles mozos\nde onde son de onde serán?\nSon da parroquia de Cambre\ndaquela terriña chan.",
+    "normalized_text": "de onde son aqueles mozos de onde son de onde seran? son da parroquia de cambre daquela terrina chan.",
+    "incipit": "De onde son aqueles mozos de",
+    "notes": null,
+    "status": "published",
+    "territory_state": "assigned",
+    "created_at": "2026-08-25 03:08:06",
+    "updated_at": "2026-08-25 03:08:06",
+    "territories": [
+      {
+        "id": "par:1504303",
+        "nome": "Cambre (San Martiño)",
+        "tipo": "par",
+        "relation_type": "direct",
+        "is_direct": 1
+      }
+    ],
+    "tags": [],
+    "versions": []
+  },
+  {
     "id": 3,
     "text": "Non chas quero, non chas quero\nnabizas do teu nabal-e\nnon chas quero, non chas quero\nque me poden facer mal-e.",
     "normalized_text": "non chas quero, non chas quero nabizas do teu nabal-e non chas quero, non chas quero que me poden facer mal-e.",

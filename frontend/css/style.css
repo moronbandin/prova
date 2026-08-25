@@ -379,6 +379,12 @@ a {
   color: var(--muted);
 }
 
+.floating-results button span,
+.territory-results button span,
+.gallery-place {
+  opacity: 0.78;
+}
+
 .floating-results .result-copla {
   background: rgba(248, 246, 239, 0.97);
   border-color: #e5dcc9;
@@ -420,6 +426,10 @@ a {
 .card-close:hover {
   color: var(--ink);
   background: #ffffff;
+}
+
+.map-card-toggle {
+  display: none;
 }
 
 .eyebrow {
@@ -565,6 +575,16 @@ label textarea {
   border: 1px solid var(--line);
   border-radius: 8px;
   outline: none;
+}
+
+.input-action {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.input-action .btn {
+  white-space: nowrap;
 }
 
 .chips {
@@ -825,6 +845,40 @@ label textarea {
   background: #f7f8f6;
   border: 1px solid var(--line);
   border-radius: 8px;
+}
+
+.selected-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 34px;
+}
+
+.selected-chip {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  padding: 7px 8px 7px 10px;
+  color: var(--accent);
+  background: #eef3f0;
+  border: 1px solid #d8e3dc;
+  border-radius: 999px;
+}
+
+.selected-chip small {
+  color: var(--muted);
+}
+
+.selected-chip button {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  color: var(--muted);
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 999px;
 }
 
 .piece-layout {
@@ -1089,6 +1143,31 @@ label {
   opacity: 0.45;
 }
 
+.seq-item.drop-before,
+.seq-item.drop-after {
+  position: relative;
+}
+
+.seq-item.drop-before::before,
+.seq-item.drop-after::after {
+  position: absolute;
+  right: 10px;
+  left: 10px;
+  height: 3px;
+  content: "";
+  background: var(--accent);
+  border-radius: 999px;
+  box-shadow: 0 0 0 4px rgba(49, 95, 75, 0.12);
+}
+
+.seq-item.drop-before::before {
+  top: -6px;
+}
+
+.seq-item.drop-after::after {
+  bottom: -6px;
+}
+
 .sequence-list.drop-target {
   outline: 2px solid #c5d7cc;
   outline-offset: 3px;
@@ -1173,9 +1252,24 @@ label {
 }
 
 .breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
   margin-bottom: 12px;
   font-size: 12px;
   color: var(--muted);
+}
+
+.breadcrumbs button {
+  padding: 0;
+  color: var(--accent);
+  background: transparent;
+  border: 0;
+}
+
+.breadcrumbs button:hover {
+  text-decoration: underline;
 }
 
 .territory-card h1 {
@@ -1339,6 +1433,43 @@ label {
     bottom: 76px;
     left: 14px;
     width: auto;
+    max-height: calc(100vh - 160px);
+    overflow: auto;
+  }
+
+  .map-card-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(100% - 36px);
+    padding: 10px 12px;
+    margin: 0 36px 10px 0;
+    color: var(--ink);
+    background: #f3f5f2;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+
+  .map-card.is-collapsed {
+    max-height: none;
+    padding: 10px 12px;
+  }
+
+  .map-card.is-collapsed .eyebrow,
+  .map-card.is-collapsed p,
+  .map-card.is-collapsed .stats,
+  .map-card.is-collapsed .map-actions {
+    display: none;
+  }
+
+  .map-card.is-collapsed h2 {
+    margin-bottom: 0;
+    font-size: 17px;
+  }
+
+  .map-card.is-collapsed .map-card-toggle {
+    width: auto;
+    margin: 0 34px 0 0;
   }
 
   .floating-search,
