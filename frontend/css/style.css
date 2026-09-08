@@ -348,6 +348,35 @@ a {
   border-radius: 8px;
 }
 
+.floating-reset {
+  position: absolute;
+  top: 86px;
+  left: 18px;
+  z-index: 801;
+}
+
+.floating-reset button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  color: var(--accent);
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(28, 33, 29, 0.08);
+}
+
+.floating-reset button:hover {
+  background: #ffffff;
+}
+
+.galicia-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
 .floating-results {
   position: absolute;
   top: 78px;
@@ -1710,12 +1739,7 @@ label {
   }
 
   .map-card {
-    right: 14px;
-    bottom: 76px;
-    left: 14px;
-    width: auto;
-    max-height: calc(100vh - 160px);
-    overflow: auto;
+    display: none;
   }
 
   .map-card-toggle {
@@ -1773,8 +1797,24 @@ label {
     grid-column: 2 / 3;
   }
 
+  .floating-reset {
+    top: 150px;
+    left: 14px;
+    right: auto;
+    z-index: 802;
+  }
+
+  .floating-reset button {
+    width: 38px;
+    height: 38px;
+  }
+
   .floating-results {
-    top: 76px;
+    top: 196px;
+  }
+
+  .leaflet-control-zoom {
+    display: none !important;
   }
 
   .pdf-panel {

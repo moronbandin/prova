@@ -2233,6 +2233,7 @@ function bindGlobalEvents() {
     window.setTimeout(() => state.map?.invalidateSize(), 250);
   });
   $("#clearTerritory")?.addEventListener("click", clearTerritory);
+  $("#resetMapViewBtn")?.addEventListener("click", clearTerritory);
   $("#mapCardToggle")?.addEventListener("click", () => {
     setMapCardCollapsed(!$(".map-card")?.classList.contains("is-collapsed"));
   });
