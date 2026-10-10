@@ -3139,25 +3139,6 @@ label {
   box-shadow: var(--shadow);
 }
 
-/* Selección */
-
-.gallery-card.is-selected,
-.incipit-row.is-selected {
-  border-color: var(--accent);
-  box-shadow: none;
-}
-
-.gallery-card.is-selected::before {
-  content: "";
-  position: absolute;
-  top: 12px;
-  bottom: 12px;
-  left: 0;
-  width: 3px;
-  background: var(--accent);
-  border-radius: 3px;
-}
-
 /* Carga */
 
 .global-loading {
@@ -4987,19 +4968,79 @@ label {
   cursor: pointer;
 }
 
+.is-selecting .select-check {
+  display: none !important;
+}
+
 .is-selecting .icon-add,
 .is-selecting .card-float-add,
 .is-selecting .fav-slot {
   display: none;
 }
 
+.gallery-card.is-selected,
 .incipit-row.is-selected {
+  position: relative;
+  z-index: 2;
   background: var(--accent-soft);
-  box-shadow: inset 3px 0 0 var(--accent);
+  border: 1px solid rgba(194, 67, 48, 0.4);
+  border-radius: var(--radius);
+  box-shadow: 0 16px 28px rgba(23, 23, 23, 0.15), 0 3px 8px rgba(23, 23, 23, 0.08);
+  transform: translateY(-5px);
 }
 
-.gallery-card.is-selected {
-  background: linear-gradient(90deg, var(--accent-soft), transparent 85%);
+.copla-gallery.is-selecting .gallery-card.is-selected,
+.copla-list.is-selecting .gallery-card.is-selected {
+  padding: 32px 12px 34px;
+}
+
+.copla-gallery.is-selecting .gallery-card.is-selected .gallery-card-body {
+  padding-inline: 0;
+}
+
+@media (max-width: 920px) {
+  .copla-gallery.is-selecting .gallery-card.is-selected,
+  .copla-list.is-selecting .gallery-card.is-selected {
+    padding: 36px 12px 38px;
+  }
+}
+
+.copla-gallery.is-selecting .gallery-card {
+  border-bottom-color: transparent;
+}
+
+.copla-gallery.is-selecting .gallery-card.is-selected {
+  box-sizing: border-box;
+  width: calc(100% - 48px);
+  margin-inline: 24px;
+  align-items: stretch;
+}
+
+.copla-gallery.is-selecting .gallery-card.is-selected .gallery-card-body {
+  width: 100%;
+  min-width: 0;
+}
+
+.gallery-card.is-selected .gallery-title,
+.incipit-row.is-selected .incipit-text {
+  color: var(--accent-hover);
+}
+
+.is-selecting .gallery-card,
+.is-selecting .incipit-row {
+  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease, border-color 180ms ease;
+}
+
+.copla-incipits.is-selecting .incipit-row {
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 30%) auto;
+  grid-template-areas: "title place star";
+}
+
+@media (max-width: 920px) {
+  .copla-incipits.is-selecting .incipit-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "title star" "place star";
+  }
 }
 
 .select-toggle {
