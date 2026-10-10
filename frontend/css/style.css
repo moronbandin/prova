@@ -6195,6 +6195,157 @@ label {
   color: var(--line-strong);
 }
 .media-place { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
+
+/* Argalladas */
+.argalladas-page .page-head { margin-bottom: 40px; }
+.argalladas-page.is-tool .page-head { margin-bottom: 28px; }
+.argalladas-tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  max-width: 1040px;
+}
+.argallada-tool {
+  display: flex;
+  min-height: 310px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 28px;
+  color: var(--ink);
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+.argallada-tool:hover,
+.argallada-tool:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 14px 30px rgba(23, 23, 23, 0.1);
+  transform: translateY(-3px);
+}
+.argallada-tool-icon {
+  display: grid;
+  width: 76px;
+  height: 76px;
+  margin-bottom: 10px;
+  place-items: center;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 24px;
+  font-size: 48px;
+  line-height: 1;
+}
+.argallada-tool strong { font-size: clamp(22px, 2.4vw, 30px); font-weight: 500; }
+.argallada-tool > span:not(.argallada-tool-icon):not(.eyebrow) { max-width: 390px; color: var(--muted); line-height: 1.55; }
+.argallada-tool-cta { margin-top: auto; color: var(--accent); font-weight: 500; }
+.argalladas-back {
+  margin-bottom: 24px;
+  padding: 0;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.argalladas-back:hover { color: var(--accent); }
+.argalladas-tool-panel { max-width: 760px; }
+.argalladas-tool-panel h2 { margin: 8px 0 28px; font-size: clamp(24px, 3vw, 36px); font-weight: 400; }
+.argalladas-controls { display: grid; max-width: 460px; gap: 8px; margin: 20px 0 12px; }
+.argalladas-controls label { color: var(--muted); font-size: 13px; }
+.argalladas-controls select {
+  min-height: 48px;
+  padding: 10px 12px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.argalladas-tool-panel > .btn { margin-top: 14px; }
+.argalladas-result { margin-top: 34px; padding-top: 24px; border-top: 1px solid var(--line); }
+.argalladas-result h3 { margin: 8px 0; font-size: 26px; font-weight: 500; }
+.argalladas-result p { margin: 0 0 16px; color: var(--muted); }
+.argalladas-empty { margin-top: 22px; color: var(--muted); }
+.argalladas-score { margin: 28px 0 12px; color: var(--accent); font-family: var(--font-mono); }
+.argalladas-question { max-width: 680px; }
+.argalladas-verses { display: grid; gap: 8px; margin: 16px 0 24px; font-size: clamp(18px, 2vw, 24px); line-height: 1.5; }
+.argalladas-blank { display: block; padding: 8px 12px; color: var(--muted); background: var(--accent-soft); border-radius: 8px; }
+.argalladas-blank.is-revealed { color: var(--accent-hover); }
+.argalladas-choices { display: grid; gap: 9px; }
+.argalladas-choice { padding: 13px 15px; color: var(--ink); text-align: left; background: transparent; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.argalladas-choice:not(:disabled):hover,
+.argalladas-choice:not(:disabled):focus-visible { border-color: var(--accent); }
+.argalladas-choice.is-correct { color: #21613a; background: #e9f4eb; border-color: #78a987; }
+.argalladas-choice.is-wrong { color: var(--accent-hover); background: var(--accent-soft); border-color: var(--accent); }
+.argalladas-choice:disabled { cursor: default; }
+.argalladas-feedback { margin: 14px 0 0; }
+.argalladas-feedback.is-correct { color: #21613a; }
+.argalladas-feedback.is-wrong { color: var(--accent-hover); }
+.argalladas-rhythms { display: flex; flex-wrap: nowrap; gap: 8px; max-width: 100%; overflow-x: auto; padding: 2px 1px 8px; scrollbar-width: thin; }
+.argallada-rhythm {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 7px 12px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.argallada-rhythm:hover,
+.argallada-rhythm.is-active { color: var(--accent-hover); background: var(--accent-soft); border-color: var(--accent); }
+.argalladas-result-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+.argalladas-result-head h3 { margin: 8px 0; }
+.argalladas-result-head p { margin: 0; color: var(--muted); }
+.argalladas-lyrics-toggle { display: grid; width: 42px; height: 42px; flex: 0 0 auto; place-items: center; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 50%; cursor: pointer; }
+.argalladas-lyrics-toggle:hover,
+.argalladas-lyrics-toggle:focus-visible { color: var(--accent-hover); background: var(--accent-soft); border-color: var(--accent); }
+.argalladas-lyrics-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
+.argalladas-lyrics-dialog { width: 100vw; max-width: none; height: 100vh; height: 100dvh; max-height: none; margin: 0; padding: clamp(22px, 5vw, 64px); color: var(--ink); background: var(--panel); border: 0; overflow: auto; }
+.argalladas-lyrics-dialog::backdrop { background: rgba(23, 23, 23, 0.58); }
+.argalladas-lyrics-dialog-inner { width: min(100%, 880px); min-height: 100%; margin: 0 auto; }
+.argalladas-lyrics-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+.argalladas-lyrics-dialog header h2 { margin: 0; font-size: clamp(24px, 4vw, 40px); font-weight: 400; }
+.argalladas-lyrics-dialog header button { display: grid; width: 44px; height: 44px; flex: 0 0 auto; place-items: center; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 50%; font-size: 26px; cursor: pointer; }
+.argalladas-lyrics-dialog header button:hover,
+.argalladas-lyrics-dialog header button:focus-visible { color: var(--accent-hover); border-color: var(--accent); }
+.argalladas-lyrics-dialog .argalladas-lyrics { max-width: none; margin-top: 32px; padding-top: 0; border-top: 0; }
+.argalladas-lyrics { max-width: 620px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+.argalladas-lyrics-part + .argalladas-lyrics-part { margin-top: 22px; }
+.argalladas-lyrics-part h4 { margin: 0 0 8px; color: var(--accent); font-family: var(--font-mono); font-size: 13px; font-weight: 500; }
+.argalladas-lyrics-part p { margin: 0 0 12px; color: var(--ink); line-height: 1.65; }
+.argalladas-territory-picker { display: grid; max-width: 480px; gap: 8px; }
+.argalladas-territory-picker label { color: var(--muted); font-size: 13px; }
+.argalladas-territory-picker input { min-height: 48px; padding: 10px 12px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+.argalladas-territory-results { display: grid; gap: 4px; }
+.argalladas-territory-results:empty { display: none; }
+.argalladas-territory-results button { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; color: var(--ink); text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.argalladas-territory-results button:hover { color: var(--accent-hover); background: var(--accent-soft); }
+.argalladas-territory-results small { color: var(--muted); }
+.argalladas-selected-territory { margin: 18px 0 6px; }
+  .argalladas-study-piece-picker { display: grid; max-width: 480px; gap: 8px; margin-top: 18px; }
+  .argalladas-study-piece-picker label { color: var(--muted); font-size: 13px; }
+  .argalladas-study-piece-picker select { min-height: 48px; padding: 10px 42px 10px 14px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-sm); font: inherit; }
+.argalladas-clear-piece { margin-left: 10px; padding: 0; color: var(--accent-hover); background: transparent; border: 0; text-decoration: underline; cursor: pointer; }
+.argalladas-study-card { display: grid; max-width: 720px; gap: 10px; margin-top: 26px; }
+.argalladas-incipit { padding: 22px 24px; color: var(--ink); text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); font-family: var(--font-mono); font-size: clamp(20px, 2.4vw, 30px); line-height: 1.55; cursor: pointer; }
+.argalladas-incipit:hover,
+.argalladas-incipit:focus-visible { border-color: var(--accent); box-shadow: 0 10px 24px rgba(23, 23, 23, 0.08); }
+.argalladas-incipit[aria-expanded="true"] { font-family: var(--font-ui); font-size: clamp(17px, 2vw, 22px); }
+.argalladas-study-hint { color: var(--muted); font-size: 12px; }
+
+@media (max-width: 760px) {
+  .argalladas-tools { grid-template-columns: 1fr; gap: 14px; }
+  .argallada-tool { min-height: 250px; padding: 22px; }
+  .argallada-tool-icon { width: 64px; height: 64px; font-size: 40px; }
+  .argalladas-incipit { padding: 18px; }
+  .argalladas-lyrics-dialog { padding: 20px; }
+  .argalladas-clear-piece { display: block; margin: 8px 0 0; }
+}
 .media-place .level-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .media-place small { color: var(--muted); font-size: 11px; }
 .media-private-badge {

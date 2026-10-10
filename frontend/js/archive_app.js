@@ -43,7 +43,7 @@ const RHYTHMS = [
 const MUSICAL_MEDIA_KINDS = new Set(["audio", "spotify", "soundcloud"]);
 const DRAFT_KEY = "fol-e-ar-piece-cart-v2";
 const RESUME_KEY = "fol-e-ar-resume";
-const VIEWS = ["map", "coplas", "melodies", "pieces", "territory", "submit", "media", "about", "profile", "people"];
+const VIEWS = ["map", "coplas", "melodies", "pieces", "territory", "submit", "media", "about", "profile", "people", "argalladas"];
 
 const VIEW_PREFS_KEY = "fol-e-ar-view-prefs";
 
@@ -124,6 +124,16 @@ const state = {
   mediaKindFilter: "",
   mediaRoleFilter: "",
   mediaModalOpen: false,
+  argalladasTool: "",
+  argalladasRhythm: "",
+  argalladasPieceId: null,
+  argalladasPieceSeen: {},
+  argalladasTerritoryId: "galicia",
+  argalladasTerritoryQuery: "",
+  argalladasStudyPieceId: null,
+  argalladasCoplaSeen: {},
+  argalladasCurrentCoplaId: null,
+  argalladasCoplaRevealed: false,
   mediaDefaultRole: "",
   aboutPrivacy: false,
   aboutTerritoryQuery: "",
@@ -1793,7 +1803,7 @@ function setView(viewName, { push = true } = {}) {
   }
   all(".view").forEach(view => view.classList.toggle("active", view.id === `view-${state.view}`));
   all("[data-view]").forEach(button => button.classList.toggle("active", normalizeView(button.dataset.view) === state.view));
-  $("#mobileExploreBtn")?.classList.toggle("active", ["pieces", "melodies", "media"].includes(state.view));
+  $("#mobileExploreBtn")?.classList.toggle("active", ["pieces", "melodies", "media", "argalladas"].includes(state.view));
   closeMobileExplore();
   if (state.view !== previousView) resetInfiniteLists();
   renderView();
@@ -7088,6 +7098,7 @@ const ABOUT_NAV = [
   { view: "coplas", name: "Coplas", text: "Procura por verso, íncipit, territorio ou lugar. Cada ficha amosa as variantes e os recursos relacionados." },
   { view: "melodies", name: "Melodías", text: "O inventario de melodías, agrupadas por ritmo e territorio, cos recursos onde se poden escoitar." },
   { view: "pieces", name: "Pezas", text: "A biblioteca de pezas montadas con coplas do arquivo e o obradoiro para compoñer as túas." },
+  { view: "argalladas", name: "Argalladas", text: "Ferramentas para sortear pezas por ritmo e xogar a completar coplas dun territorio." },
   { view: "media", name: "Media", text: "Gravacións, vídeos, imaxes e documentos ligados ás coplas, ás melodías e ás pezas." },
   { view: "people", name: "Persoas", text: "O directorio de quen decidiu amosar o seu perfil, coas pezas que publicou.", accountsOnly: true },
 ];
@@ -7297,6 +7308,219 @@ function downloadText(filename, text, type = "text/plain") {
   URL.revokeObjectURL(link.href);
 }
 
+function argalladasRhythms() {
+  const labels = new Map();
+  state.pezas.forEach(piece => {
+    if (piece.visibility === "private" || piece.status === "hidden") return;
+    pieceSections(piece).forEach(section => {
+      const label = String(section.label || "").trim();
+      if (label) labels.set(normalizeText(label), label);
+    });
+  });
+  return [...labels.values()].sort((a, b) => a.localeCompare(b, "gl"));
+}
+
+function argalladasPiecesForRhythm(rhythm = state.argalladasRhythm) {
+  const key = normalizeText(rhythm);
+  return state.pezas.filter(piece => {
+    if (piece.visibility === "private" || piece.status === "hidden") return false;
+    return pieceSections(piece).some(section => normalizeText(section.label) === key);
+  });
+}
+
+function argalladasCoplasForTerritory(territoryId = state.argalladasTerritoryId) {
+  if (territoryId === "galicia") {
+    return state.coplas.filter(copla => copla.id && String(copla.text || "").trim());
+  }
+  const territory = state.territorios.find(item => item.id === territoryId);
+  if (!territory) return [];
+  const ids = getDescendantIds(territory, state.territorios);
+  const seen = new Set();
+  return filterCoplasByTerritory(state.coplas, ids).filter(copla => {
+    if (!copla.id || seen.has(copla.id)) return false;
+    seen.add(copla.id);
+    return String(copla.text || "").trim();
+  });
+}
+
+function argalladasStudyPiecesForTerritory(territoryId = state.argalladasTerritoryId) {
+  const pieces = state.pezas.filter(piece => piece.visibility !== "private" && piece.status !== "hidden");
+  if (territoryId === "galicia") return pieces;
+  const territory = state.territorios.find(item => item.id === territoryId);
+  if (!territory) return [];
+  const ids = getDescendantIds(territory, state.territorios);
+  const coplas = argalladasCoplasForTerritory(territoryId);
+  return filterPiecesByTerritory(pieces, ids, coplas);
+}
+
+function argalladasCoplasForStudy() {
+  const territoryCoplas = argalladasCoplasForTerritory();
+  if (!state.argalladasStudyPieceId) return territoryCoplas;
+  const piece = state.pezas.find(item => String(item.id) === String(state.argalladasStudyPieceId));
+  if (!piece) return territoryCoplas;
+  return pieceSections(piece).flatMap(section => section.coplas.map((item, index) => {
+    const linkedCopla = item.id == null ? null : state.coplas.find(copla => String(copla.id) === String(item.id));
+    const text = String(item.text || linkedCopla?.text || "");
+    const id = `piece:${piece.id}:${section.label}:${item.position ?? index + 1}:${linkedCopla?.id ?? ""}`;
+    if (!text.trim()) return null;
+    return {
+      ...(linkedCopla || {}),
+      id,
+      text,
+      incipit: firstLine(text) || item.incipit || linkedCopla?.incipit || "",
+    };
+  })).filter(Boolean);
+}
+
+function argalladasTerritoryMatches(query, territories) {
+  const key = normalizeText(query);
+  if (!key) return [];
+  const galicia = normalizeText("Galicia").includes(key) ? [{ id: "galicia", nome: "Galicia", tipo: "galicia" }] : [];
+  return [...galicia, ...territories.filter(item => normalizeText(item.nome).includes(key))].slice(0, 12);
+}
+
+function argalladasTerritoryType(item) {
+  return item.id === "galicia" ? "Territorio xeral" : territoryTypeLabel(item.tipo);
+}
+
+function argalladasNextCopla() {
+  const pool = argalladasCoplasForStudy();
+  const scope = `${state.argalladasTerritoryId || "galicia"}|${state.argalladasStudyPieceId || "all"}`;
+  let seen = state.argalladasCoplaSeen[scope] || [];
+  let unseen = pool.filter(copla => !seen.includes(String(copla.id)));
+  if (!unseen.length && pool.length) {
+    seen = [];
+    unseen = pool;
+  }
+  const copla = state.argalladasStudyPieceId
+    ? unseen[0]
+    : unseen[Math.floor(Math.random() * unseen.length)];
+  if (!copla) {
+    state.argalladasCurrentCoplaId = null;
+    state.argalladasCoplaRevealed = false;
+    return;
+  }
+  state.argalladasCoplaSeen[scope] = [...seen, String(copla.id)];
+  state.argalladasCurrentCoplaId = String(copla.id);
+  state.argalladasCoplaRevealed = false;
+}
+
+function renderArgalladasView() {
+  const view = $("#view-argalladas");
+  if (!view) return;
+  const tool = state.argalladasTool;
+  const rhythms = argalladasRhythms();
+  const territories = [...state.territorios].sort((a, b) => a.nome.localeCompare(b.nome, "gl"));
+  const selectedTerritory = state.territorios.find(item => item.id === state.argalladasTerritoryId);
+  const territoryName = selectedTerritory?.nome || "Galicia";
+  const studyCoplas = argalladasCoplasForStudy();
+  const studyPieces = argalladasStudyPiecesForTerritory();
+  const selectedStudyPiece = studyPieces.find(item => String(item.id) === String(state.argalladasStudyPieceId));
+  const pickedPiece = state.pezas.find(piece => String(piece.id) === String(state.argalladasPieceId));
+  const currentCopla = studyCoplas.find(item => String(item.id) === String(state.argalladasCurrentCoplaId));
+  const territoryQuery = normalizeText(state.argalladasTerritoryQuery);
+  const territoryMatches = argalladasTerritoryMatches(territoryQuery, territories);
+  const coplaIncipit = firstLine(currentCopla?.text || "") || currentCopla?.incipit || "Copla sen íncipit";
+  const pieceLyrics = pickedPiece ? pieceSections(pickedPiece).map(section => `<section class="argalladas-lyrics-part"><h4>${escapeHtml(section.label)}</h4>${section.coplas.map(item => `<p>${nl2br(escapeHtml(item.text || ""))}</p>`).join("")}</section>`).join("") : "";
+  const pieceLyricsContent = pieceLyrics || `<p class="muted">Esta peza aínda non ten letra.</p>`;
+
+  view.innerHTML = `
+    <div class="page argalladas-page ${tool ? "is-tool" : ""}">
+      ${tool ? `<button class="argalladas-back" type="button" data-argalladas-action="home">← Argalladas</button>` : ""}
+      <div class="page-head"><div><h1>${tool === "draw" ? "Sorteo" : tool === "study" ? "Estudo" : "Argalladas"}</h1>${tool ? "" : `<p class="muted">Ferramentas para xogar co repertorio e aprender as coplas.</p>`}</div></div>
+      ${!tool ? `
+        <div class="argalladas-tools">
+          <button class="argallada-tool" type="button" data-argalladas-tool="draw">
+            <span class="argallada-tool-icon" aria-hidden="true">⚄</span><span class="eyebrow">Sorteo</span><strong>Que tocamos?</strong>
+            <span>Escolle un ritmo e deixa que o arquivo propoña unha peza da biblioteca.</span><span class="argallada-tool-cta">Probar o sorteo →</span>
+          </button>
+          <button class="argallada-tool" type="button" data-argalladas-tool="study">
+            <span class="argallada-tool-icon" aria-hidden="true">✳</span><span class="eyebrow">Aprender</span><strong>Estudar coplas</strong>
+            <span>Escolle un territorio e vai descubrindo as súas coplas, unha a unha.</span><span class="argallada-tool-cta">Xogar coas coplas →</span>
+          </button>
+        </div>
+      ` : tool === "draw" ? `
+        <section class="argalladas-tool-panel">
+          <div class="argalladas-rhythms" role="group" aria-label="Ritmos dispoñibles">
+            ${rhythms.map(rhythm => {
+              const count = argalladasPiecesForRhythm(rhythm).length;
+              return `<button class="argallada-rhythm ${state.argalladasRhythm === rhythm ? "is-active" : ""}" type="button" data-argalladas-rhythm="${escapeHtml(rhythm)}" ${count ? "" : "disabled"}>${escapeHtml(rhythm)}</button>`;
+            }).join("") || `<p class="argalladas-empty">A biblioteca aínda non ten pezas con ritmo.</p>`}
+          </div>
+          ${pickedPiece ? `<article class="argalladas-result"><div class="argalladas-result-head"><div><h3>${escapeHtml(pickedPiece.title || pickedPiece.titulo || "Peza sen título")}</h3><p>${escapeHtml(pieceAuthorName(pickedPiece))}${pickedPiece.context_territory?.nome ? ` · ${escapeHtml(pickedPiece.context_territory.nome)}` : ""}</p></div><button class="argalladas-lyrics-toggle" type="button" data-argalladas-action="fullscreen-lyrics" aria-label="Ver letra a pantalla completa" title="Ver letra a pantalla completa"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3H3v5m0-5 7 7m6-7h5v5m0-5-7 7M8 21H3v-5m0 5 7-7m6 7h5v-5m0 5-7-7"/></svg></button></div><div class="argalladas-lyrics">${pieceLyricsContent}</div><dialog class="argalladas-lyrics-dialog" data-argalladas-lyrics-dialog aria-labelledby="argalladasLyricsTitle"><div class="argalladas-lyrics-dialog-inner"><header><h2 id="argalladasLyricsTitle">${escapeHtml(pickedPiece.title || pickedPiece.titulo || "Letra da peza")}</h2><button type="button" data-argalladas-action="close-fullscreen-lyrics" aria-label="Pechar letra">×</button></header><div class="argalladas-lyrics">${pieceLyricsContent}</div></div></dialog></article>` : ""}
+        </section>
+      ` : `
+        <section class="argalladas-tool-panel">
+          <div class="argalladas-territory-picker"><label for="argalladasTerritorySearch">Buscar territorio</label><input id="argalladasTerritorySearch" type="search" value="${escapeHtml(state.argalladasTerritoryQuery)}" placeholder="Escribe o nome dun territorio…" autocomplete="off"><div id="argalladasTerritoryResults" class="argalladas-territory-results">${territoryMatches.map(item => `<button type="button" data-argalladas-territory="${escapeHtml(item.id)}"><strong>${escapeHtml(item.nome)}</strong><small>${escapeHtml(argalladasTerritoryType(item))}</small></button>`).join("")}</div></div>
+          <div class="argalladas-study-piece-picker"><label for="argalladasStudyPieceSelect">Pezas deste territorio</label><select id="argalladasStudyPieceSelect"><option value="">Ver todas as coplas do territorio</option>${studyPieces.map(item => `<option value="${escapeHtml(item.id)}" ${String(item.id) === String(state.argalladasStudyPieceId) ? "selected" : ""}>${escapeHtml(item.title || item.titulo || "Peza sen título")}${pieceAuthorName(item) ? ` · ${escapeHtml(pieceAuthorName(item))}` : ""}</option>`).join("")}</select></div>
+          <p class="argalladas-selected-territory">Territorio seleccionado: <strong>${escapeHtml(territoryName)}</strong>${selectedTerritory && ["prov", "com", "con"].includes(selectedTerritory.tipo) ? " e os seus territorios dependentes" : ""}</p>
+          <p class="muted">${studyCoplas.length} ${studyCoplas.length === 1 ? "copla" : "coplas"}${selectedStudyPiece ? " desta peza" : ""}</p>
+          ${currentCopla ? `<div class="argalladas-study-card"><button class="argalladas-incipit" type="button" data-argalladas-action="advance-copla" aria-expanded="${state.argalladasCoplaRevealed}">${state.argalladasCoplaRevealed ? nl2br(escapeHtml(currentCopla.text || "")) : escapeHtml(coplaIncipit)}</button><span class="argalladas-study-hint">${state.argalladasCoplaRevealed ? "Preme para ver outro íncipit" : "Preme no íncipit para descubrir a copla"}</span></div>` : `<p class="argalladas-empty">Non hai coplas dispoñibles neste territorio.</p>`}
+        </section>
+      `}
+    </div>`;
+
+  view.querySelector("[data-argalladas-action='home']")?.addEventListener("click", () => { state.argalladasTool = ""; renderArgalladasView(); });
+  const bindTerritoryMatches = () => all("[data-argalladas-territory]", view).forEach(button => button.addEventListener("click", () => {
+    state.argalladasTerritoryId = button.dataset.argalladasTerritory;
+    state.argalladasTerritoryQuery = "";
+    state.argalladasStudyPieceId = null;
+    argalladasNextCopla();
+    renderArgalladasView();
+  }));
+  all("[data-argalladas-tool]", view).forEach(button => button.addEventListener("click", () => {
+    state.argalladasTool = button.dataset.argalladasTool;
+    if (state.argalladasTool === "study") {
+      state.argalladasStudyPieceId = null;
+      state.argalladasCurrentCoplaId = null;
+      argalladasNextCopla();
+    }
+    renderArgalladasView();
+  }));
+  all("[data-argalladas-rhythm]", view).forEach(button => button.addEventListener("click", () => {
+    const rhythm = button.dataset.argalladasRhythm;
+    const pieces = argalladasPiecesForRhythm(rhythm);
+    const key = normalizeText(rhythm);
+    const seen = state.argalladasPieceSeen[key] || [];
+    let unseen = pieces.filter(piece => !seen.includes(String(piece.id)));
+    const nextSeen = unseen.length ? seen : [];
+    if (!unseen.length) unseen = pieces;
+    const piece = unseen[Math.floor(Math.random() * unseen.length)];
+    state.argalladasRhythm = rhythm;
+    state.argalladasPieceId = piece?.id ?? null;
+    if (piece) state.argalladasPieceSeen[key] = [...nextSeen, String(piece.id)];
+    renderArgalladasView();
+  }));
+  all("[data-argalladas-action]", view).forEach(button => button.addEventListener("click", () => {
+    const action = button.dataset.argalladasAction;
+    if (action === "fullscreen-lyrics") {
+      const dialog = $(`[data-argalladas-lyrics-dialog]`, view);
+      if (dialog && !dialog.open) dialog.showModal();
+    }
+    if (action === "close-fullscreen-lyrics") {
+      $(`[data-argalladas-lyrics-dialog]`, view)?.close();
+    }
+    if (action === "advance-copla") {
+      if (state.argalladasCoplaRevealed) argalladasNextCopla();
+      else state.argalladasCoplaRevealed = true;
+      renderArgalladasView();
+    }
+  }));
+  $("#argalladasTerritorySearch", view)?.addEventListener("input", event => {
+    state.argalladasTerritoryQuery = event.target.value;
+    const query = normalizeText(state.argalladasTerritoryQuery);
+    const matches = argalladasTerritoryMatches(query, territories);
+    $("#argalladasTerritoryResults", view).innerHTML = matches.map(item => `<button type="button" data-argalladas-territory="${escapeHtml(item.id)}"><strong>${escapeHtml(item.nome)}</strong><small>${escapeHtml(argalladasTerritoryType(item))}</small></button>`).join("");
+    bindTerritoryMatches();
+  });
+  $("#argalladasStudyPieceSelect", view)?.addEventListener("change", event => {
+    state.argalladasStudyPieceId = event.target.value || null;
+    argalladasNextCopla();
+    renderArgalladasView();
+  });
+  bindTerritoryMatches();
+}
+
 function renderView() {
   if (state.view === "coplas") renderCoplasView();
   if (state.view === "melodies") renderMelodiesView();
@@ -7307,6 +7531,7 @@ function renderView() {
   if (state.view === "about") renderAboutView();
   if (state.view === "profile") window.folearProfile?.renderProfile();
   if (state.view === "people") window.folearProfile?.renderPeople();
+  if (state.view === "argalladas") renderArgalladasView();
 }
 
 function bindGlobalEvents() {
